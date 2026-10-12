@@ -1,0 +1,18 @@
+---
+description: BFF and server-side integration standards
+globs: "apps/bff/**/*.ts"
+alwaysApply: false
+---
+
+# BFF
+
+- Hono BFF is the browser's only backend; Platform calls live in `packages/platform`.
+- Keep transport in Platform adapters and product decisions/mapping in domain use cases.
+- Validate request, response, environment, and external-service boundaries with Zod.
+- Use actual known Platform contracts only; never invent endpoints or fields.
+- Map Platform failures into stable application errors and safe responses.
+- Derive player identity from the authenticated session/token when possible; do not trust a browser player ID.
+- Never return Platform JWTs to browser JavaScript.
+- Never log secrets, cookies, JWTs, signatures, passwords, payment credentials, or unnecessary personal data.
+- Do not add EveryMatrix, `platformSource`, brand branching, or compatibility DTOs.
+- CI tests must mock external traffic and must never call Platform stage.

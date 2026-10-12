@@ -1,0 +1,18 @@
+---
+description: Frontend architecture, UX, and implementation standards
+globs: "apps/web/**/*.{ts,tsx,css}"
+alwaysApply: false
+---
+
+# Frontend
+
+- Use Next.js App Router, React, strict TypeScript, Tailwind, and Zod at boundaries.
+- Keep Server/Client Component boundaries intentional and routes thin.
+- Use TanStack Query for session/client server-state and URL state for shareable filters. Avoid global stores unless justified.
+- Fetch through the BFF only. Never import Platform code, wire types, server config, or secrets.
+- Build mobile-first and verify both mobile and desktop.
+- Keep Casino, Live Casino, and Sportsbook visually dominant; favor game content over empty chrome.
+- Reuse tokens and primitives. Preserve keyboard access, touch targets, semantics, and `prefers-reduced-motion`.
+- Do not use GIFs for core UI motion or drift into generic dashboard UI.
+- Stake informs information architecture and density only. Shuffle and MyStake inform interaction ideas only.
+- Never copy third-party branding, logos, assets, exact colors, or layouts.

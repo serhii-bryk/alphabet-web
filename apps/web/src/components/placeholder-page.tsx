@@ -1,0 +1,2 @@
+import type { ReactNode } from 'react';
+export function PlaceholderPage({eyebrow,title,children}:{eyebrow:string;title:string;children:ReactNode}){return <section className="mx-auto max-w-3xl py-8 sm:py-16"><p className="text-xs font-bold uppercase tracking-[.18em] text-[var(--accent)]">{eyebrow}</p><h1 className="mt-2 text-3xl font-black">{title}</h1><div className="surface mt-7 rounded-[var(--radius-lg)] p-6 text-[var(--muted)]">{children}</div></section>}

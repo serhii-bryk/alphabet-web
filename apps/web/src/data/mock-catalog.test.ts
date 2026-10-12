@@ -1,0 +1,2 @@
+import { describe,expect,it } from 'vitest';import { getLobby,search } from './mock-catalog';
+describe('mock catalog',()=>{it('filters search across titles and providers',async()=>{expect((await search('northstar')).games.every((game)=>game.provider==='Northstar')).toBe(true)});it('separates live lobby games',async()=>{expect((await getLobby('live')).sections[0]?.games.every((game)=>game.kind==='live')).toBe(true)})});

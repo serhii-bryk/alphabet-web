@@ -1,0 +1,15 @@
+---
+description: Security boundaries for browser, BFF, sessions, and Platform access
+alwaysApply: true
+---
+
+# Security
+
+- Platform credentials, HMAC signing, tokens, and secret configuration are server-only; browser code never calls Platform.
+- Never expose secrets through `NEXT_PUBLIC_*`, browser bundles, responses, fixtures, screenshots, or source control.
+- Never log JWTs, cookies, API secrets, HMAC signatures, passwords, payment credentials, or other sensitive values.
+- Derive player identity from the authenticated session instead of browser input whenever possible.
+- Validate untrusted input and external responses with Zod; reject unexpected data.
+- Return stable, safe errors without raw upstream payloads, stack traces, or sensitive context.
+- Tests use fakes only: no production credentials, and CI never calls Platform stage.
+- Stop for human approval before changing authentication, authorization, cookies, secret handling, payments, or other security-sensitive architecture.

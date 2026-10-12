@@ -1,0 +1,17 @@
+---
+description: Core product architecture and dependency boundaries
+alwaysApply: true
+---
+
+# Architecture
+
+- Dependency flow is browser → BFF → domain/Platform. Browser code never calls Platform.
+- `apps/web` may use browser contracts and public config; it must not import `@brand/platform`, Platform wire types, or server-only config.
+- Browser-facing schemas belong in `packages/contracts`.
+- Use cases and Platform-to-brand mapping belong in `packages/domain`.
+- Platform transport, signing, endpoints, and wire types belong in `packages/platform`.
+- Verify actual Platform contracts. Never invent endpoints, fields, or unsupported behavior.
+- Never add EveryMatrix, `platformSource`, brand branching, legacy DTOs, or a CMS casino catalog unless explicitly requested.
+- Cosmoswin and Betfinal are technical references for known contracts only.
+- Casino, Live Casino, and Sportsbook are the core product.
+- Prefer direct, maintainable code over speculative abstractions.

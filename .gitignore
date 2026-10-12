@@ -1,0 +1,15 @@
+node_modules
+apps/bff/data/
+.next
+.next-e2e
+.next-ux
+.turbo
+dist
+coverage
+.env
+.env.local
+.env.*.local
+.DS_Store
+playwright-report/
+test-results/
+blob-report/

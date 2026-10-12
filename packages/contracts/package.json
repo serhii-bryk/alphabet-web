@@ -1,0 +1,1 @@
+{ "name": "@brand/contracts", "version": "0.0.0", "private": true, "type": "module", "exports": { ".": "./src/index.ts" }, "scripts": { "build": "tsc --noEmit", "typecheck": "tsc --noEmit", "lint": "eslint src", "test": "vitest run --passWithNoTests" }, "devDependencies": {} }

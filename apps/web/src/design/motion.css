@@ -1,0 +1,8 @@
+@keyframes drift { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-3px) } }
+@keyframes appear { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+@keyframes pulse { 50% { opacity: .5 } }
+.motion-enter { animation: appear .32s ease both; }
+.motion-drift { animation: drift 3.5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

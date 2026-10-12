@@ -1,0 +1,31 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      '@brand/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@brand/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@brand/platform':
+        specifier: workspace:*
+        version: link:../../packages/platform
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+
+packages:
+
+  zod@4.6.5:
+    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
+
+snapshots:
+
+  zod@4.6.5: {}

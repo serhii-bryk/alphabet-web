@@ -1,0 +1,17 @@
+---
+description: Testing and independent verification standards
+globs: "**/*.{test,spec}.{ts,tsx},**/playwright.config.ts,e2e/**"
+alwaysApply: false
+---
+
+# Testing
+
+- Use Vitest for unit and integration tests and Playwright for browser behavior.
+- Test observable contracts and behavior, not implementation details.
+- For UI changes, verify mobile and desktop plus navigation, loading, errors, stale state, invalid input, accessibility basics, and reduced motion where relevant.
+- Add a regression test for fixed bugs when practical.
+- Mock all external traffic. CI must never call Platform stage or require real credentials.
+- Independently inspect, run, and reproduce behavior; never trust an implementation report.
+- Report Passed, Failed, Not tested, Risks, recommended fixes, commands, and evidence.
+- Do not weaken assertions, skip tests, or change production behavior merely to make a test pass.
+- Never mark behavior as passed unless it was directly verified.
