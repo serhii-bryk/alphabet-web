@@ -20,7 +20,7 @@ vi.mock('@/i18n/navigation', () => ({
 import { GameCard } from '../game-card';
 import { GameView } from './game-view';
 import { DesktopGameLayer } from './desktop-game-layer';
-import { GameWorkspace } from './game-workspace';
+import { GameWorkspaceView } from './game-workspace';
 import { GameLaunchProvider, GameLauncherContext } from './provider';
 import type { GameLaunchState, GameLaunchTarget } from './state';
 
@@ -122,20 +122,22 @@ describe('GameView', () => {
     expect(renderToStaticMarkup(<GameLaunchProvider>lobby</GameLaunchProvider>)).toBe('lobby');
   });
 
-  it('renders a labelled modal dialog with a close control while launching', () => {
+  it('renders a page player with a close control while launching', () => {
     const html = renderView({ status: 'launching', target, attempt: 1 });
 
-    expect(html).toContain('role="dialog"');
-    expect(html).toContain('aria-modal="true"');
-    expect(html).toMatch(/aria-labelledby="([^"]+)".*<h2 id="\1"[^>]*>Book of Tests<\/h2>/);
+    expect(html).toContain('data-game-page');
+    expect(html).toContain('data-open-games');
+    expect(html).not.toContain('role="dialog"');
+    expect(html).not.toContain('aria-modal');
+    expect(html).toContain('<h2');
+    expect(html).toContain('Book of Tests');
     expect(html).toContain('Studio Games');
-    expect(html).toContain('z-[90]');
-    expect(html).toContain('h-dvh');
     expect(html).toContain('Back to lobby');
     expect(html).toContain('role="status"');
     expect(html).toContain('Starting demo…');
     expect(html).toContain('data-alphabet-loader');
     expect(html).not.toContain('<iframe');
+    expect(html.indexOf('data-open-games')).toBeLessThan(html.indexOf('data-game-page'));
   });
 
   it('renders the iframe from the launch response with a loading overlay', () => {
@@ -291,8 +293,9 @@ describe('desktop game layer', () => {
     );
 
     expect(html).toContain('data-desktop-game-layer');
+    expect(html).toContain('data-open-games');
     expect(html).toContain('data-add-game');
-    expect(html).toContain('Add Game');
+    expect(html).toContain('Add game');
     expect(html).toContain('pointer-events-none');
     expect(html).toContain(`src="${launchUrl}"`);
     expect(html.match(/<iframe/g)).toHaveLength(2);
@@ -328,7 +331,8 @@ describe('desktop game layer', () => {
     expect(html).toContain('Game details');
     expect(html).toContain('Demo available');
     expect(html).not.toContain('RTP');
-    expect(html.match(/data-add-game/g)).toHaveLength(1);
+    expect(html.match(/data-add-game/g)).toHaveLength(2);
+    expect(html.indexOf('data-open-games')).toBeLessThan(html.indexOf('data-game-page'));
     expect(html).not.toContain('width:720px');
     expect(html).not.toContain('role="dialog"');
     expect(html).not.toContain('data-game-parked');
@@ -356,17 +360,16 @@ describe('desktop game layer', () => {
   });
 });
 
-describe('mobile workspace', () => {
-  it('keeps one expanded game inside the modal switcher', () => {
+describe('game page workspace', () => {
+  it('keeps the focused game on the page, parks the other, and shows the open games bar', () => {
     const html = renderToStaticMarkup(
       <NextIntlClientProvider locale="en" messages={messages}>
-        <GameWorkspace
-          layout="mobile"
+        <GameWorkspaceView
           panels={[
             {
               id: '406',
               launch: { status: 'launching', target, attempt: 1 },
-              presentation: 'floating',
+              presentation: 'background',
               frame: { x: 0, y: 0, width: 720, height: 480 },
               restoreFrame: null,
               z: 1,
@@ -378,13 +381,13 @@ describe('mobile workspace', () => {
                 target: { game: { ...game, id: '407', title: 'Second Game' }, mode: 'demo' },
                 attempt: 1,
               },
-              presentation: 'floating',
+              presentation: 'page',
               frame: { x: 0, y: 0, width: 720, height: 480 },
               restoreFrame: null,
               z: 2,
             },
           ]}
-          focusedId="406"
+          focusedId="407"
           browsing={false}
           limitNotice={false}
           demoLevel="none"
@@ -410,15 +413,16 @@ describe('mobile workspace', () => {
       </NextIntlClientProvider>,
     );
 
-    expect(html).toContain('role="dialog"');
-    expect(html).toContain('aria-modal="true"');
+    expect(html).toContain('data-game-page');
+    expect(html).toContain('data-open-games');
     expect(html).toContain('role="tablist"');
     expect(html).toContain('Add game');
     expect(html).toContain('data-game-parked');
     expect(html).toContain('game-live-parked');
     expect(html).toContain('inert=""');
     expect(html).not.toContain('hidden=""');
-    expect(html).not.toContain('data-desktop-game-layer');
-    expect(html).not.toContain('Add Game');
+    expect(html).not.toContain('role="dialog"');
+    expect(html).not.toContain('aria-modal');
+    expect(html.indexOf('data-open-games')).toBeLessThan(html.indexOf('data-game-page'));
   });
 });

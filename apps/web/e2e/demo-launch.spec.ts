@@ -139,6 +139,10 @@ async function openCasino(page: Page) {
   await expect(page.getByRole('heading', { level: 1, name: 'Casino' })).toBeVisible();
 }
 
+function gamePage(page: Page) {
+  return page.locator('[data-game-page]');
+}
+
 function demoFrame(page: Page, title: string) {
   return page.frameLocator(`iframe[title="${title} demo"]`);
 }
@@ -233,11 +237,27 @@ test.describe('demo game launch', () => {
     await openCasino(page);
     await page.getByRole('button', { name: BOOK_DEMO }).click();
 
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole('heading', { name: 'Book of Tests' })).toBeVisible();
-    await expect(dialog.getByText('Test Provider · Demo')).toBeVisible();
-    await expect(dialog.locator('iframe[title="Book of Tests demo"]')).toBeVisible();
+    const player = gamePage(page);
+    await expect(player).toBeVisible();
+    await expect(page.locator('header')).toBeVisible();
+    await expect(page.locator('footer')).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(player.getByRole('heading', { name: 'Book of Tests' })).toBeVisible();
+    await expect(player.getByText('Test Provider').first()).toBeVisible();
+    await expect(player.locator('.game-mode-chip')).toHaveText('Demo');
+    const iframe = player.locator('iframe[title="Book of Tests demo"]');
+    await expect(iframe).toBeVisible();
+    const [headerBox, frameBox, barBox, footerBox, playerBox] = await Promise.all([
+      page.locator('header').boundingBox(),
+      iframe.boundingBox(),
+      page.locator('[data-open-games]').boundingBox(),
+      page.locator('footer').boundingBox(),
+      player.boundingBox(),
+    ]);
+    expect(headerBox && frameBox && barBox && footerBox && playerBox).toBeTruthy();
+    expect(frameBox!.y).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height - 1);
+    expect(frameBox!.y + frameBox!.height).toBeLessThanOrEqual(barBox!.y + 2);
+    expect(footerBox!.y).toBeGreaterThanOrEqual(playerBox!.y + playerBox!.height - 1);
     await expect(demoFrame(page, 'Book of Tests').locator('#fake-game')).toHaveText('Fake game ready');
     expect(routes.posts()).toBe(1);
   });
@@ -247,12 +267,12 @@ test.describe('demo game launch', () => {
     await openCasino(page);
     await page.getByRole('button', { name: BOOK_DEMO }).click();
 
-    const dialog = page.getByRole('dialog');
-    const iframe = dialog.locator('iframe[title="Book of Tests demo"]');
-    await expect(dialog.getByText('Loading game…')).toBeVisible();
+    const player = gamePage(page);
+    const iframe = player.locator('iframe[title="Book of Tests demo"]');
+    await expect(player.getByText('Loading game…')).toBeVisible();
     await expect(iframe).toBeVisible();
     expect(await iframeIsHitTarget(iframe)).toBe(true);
-    await expect(dialog.locator('.place-items-center')).toHaveCount(0);
+    await expect(player.locator('.absolute.inset-0.grid.place-items-center')).toHaveCount(0);
     expect(routes.posts()).toBe(1);
   });
 
@@ -263,17 +283,17 @@ test.describe('demo game launch', () => {
       await openCasino(page);
       await page.getByRole('button', { name: BOOK_DEMO }).click();
 
-      const dialog = page.getByRole('dialog');
-      const iframe = dialog.locator('iframe[title="Book of Tests demo"]');
-      await expect(dialog.getByText('Loading game…')).toBeVisible();
+      const player = gamePage(page);
+      const iframe = player.locator('iframe[title="Book of Tests demo"]');
+      await expect(player.getByText('Loading game…')).toBeVisible();
 
       await page.clock.fastForward(44_000);
-      await expect(dialog.getByText('This is taking longer than usual')).toHaveCount(0);
+      await expect(player.getByText('This is taking longer than usual')).toHaveCount(0);
 
       await page.clock.fastForward(2_000);
-      await expect(dialog.getByText('This is taking longer than usual')).toBeVisible();
-      await expect(dialog.getByRole('button', { name: 'Keep waiting' })).toBeVisible();
-      await expect(dialog.getByRole('button', { name: 'Reload game' })).toBeVisible();
+      await expect(player.getByText('This is taking longer than usual')).toBeVisible();
+      await expect(player.getByRole('button', { name: 'Keep waiting' })).toBeVisible();
+      await expect(player.getByRole('button', { name: 'Reload game' })).toBeVisible();
       await expect(iframe).toHaveCount(1);
       expect(routes.posts()).toBe(1);
     } finally {
@@ -286,16 +306,16 @@ test.describe('demo game launch', () => {
     await openCasino(page);
     await page.getByRole('button', { name: BOOK_DEMO }).click();
 
-    const dialog = page.getByRole('dialog');
-    await expect(dialog.getByText('Couldn’t start the demo')).toBeVisible();
-    await expect(dialog.getByRole('button', { name: 'Retry' })).toBeVisible();
-    await expect(dialog.getByRole('button', { name: 'Back to lobby' }).first()).toBeVisible();
-    await expect(dialog.locator('iframe')).toHaveCount(0);
+    const player = gamePage(page);
+    await expect(player.getByText('Couldn’t start the demo')).toBeVisible();
+    await expect(player.getByRole('button', { name: 'Retry' })).toBeVisible();
+    await expect(player.getByRole('button', { name: 'Back to lobby' }).first()).toBeVisible();
+    await expect(player.locator('iframe')).toHaveCount(0);
 
     await page.waitForTimeout(500);
     expect(routes.posts()).toBe(1);
 
-    await dialog.getByRole('button', { name: 'Retry' }).click();
+    await player.getByRole('button', { name: 'Retry' }).click();
     await expect(demoFrame(page, 'Book of Tests').locator('#fake-game')).toHaveText('Fake game ready');
     expect(routes.posts()).toBe(2);
   });
@@ -307,22 +327,22 @@ test.describe('demo game launch', () => {
     await expect(demoFrame(page, 'Book of Tests').locator('#fake-game')).toHaveText('Fake game ready');
 
     await page.keyboard.press('Escape');
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(page).toHaveURL(/\/en\/casino$/);
+    await expect(gamePage(page)).toHaveCount(0);
+    await expect(page).toHaveURL(/\/casino$/);
     await expect(page.getByRole('button', { name: BOOK_DEMO })).toBeFocused();
     expect(routes.posts()).toBe(1);
   });
 
-  test('Back to lobby closes the dialog, keeps the lobby URL, and restores focus', async ({ page }) => {
+  test('Back to lobby closes the game page, keeps the lobby URL, and restores focus', async ({ page }) => {
     const routes = await installLaunchRoutes(page);
     await openCasino(page);
     await page.getByRole('button', { name: BOOK_DEMO }).click();
-    const dialog = page.getByRole('dialog');
+    const player = gamePage(page);
     await expect(demoFrame(page, 'Book of Tests').locator('#fake-game')).toHaveText('Fake game ready');
 
-    await dialog.getByRole('button', { name: 'Back to lobby' }).click();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(page).toHaveURL(/\/en\/casino$/);
+    await player.getByRole('button', { name: 'Back to lobby' }).click();
+    await expect(gamePage(page)).toHaveCount(0);
+    await expect(page).toHaveURL(/\/casino$/);
     await expect(page.getByRole('button', { name: BOOK_DEMO })).toBeFocused();
     expect(routes.posts()).toBe(1);
   });
@@ -334,8 +354,8 @@ test.describe('demo game launch', () => {
     await expect(demoFrame(page, 'Book of Tests').locator('#fake-game')).toHaveText('Fake game ready');
 
     await page.goBack();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(page).toHaveURL(/\/en\/casino$/);
+    await expect(gamePage(page)).toHaveCount(0);
+    await expect(page).toHaveURL(/\/casino$/);
     await expect(page.getByRole('heading', { level: 1, name: 'Casino' })).toBeVisible();
     expect(routes.posts()).toBe(1);
   });
@@ -353,8 +373,8 @@ test.describe('demo game launch', () => {
         record.__brandPopCount = (record.__brandPopCount ?? 0) + 1;
       });
 
-      const dialog = document.querySelector('[role="dialog"]');
-      const back = Array.from(dialog?.querySelectorAll('button') ?? []).find((button) =>
+      const player = document.querySelector('[data-game-page]');
+      const back = Array.from(player?.querySelectorAll('button') ?? []).find((button) =>
         button.textContent?.includes('Back to lobby'),
       );
       const second = document.querySelector<HTMLButtonElement>(`button[aria-label="${secondName}"]`);
@@ -364,16 +384,16 @@ test.describe('demo game launch', () => {
     }, SECOND_DEMO);
 
     expect(routes.posts()).toBe(1);
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(gamePage(page)).toHaveCount(0);
     await expect
       .poll(() => page.evaluate(() => (window as Window & { __brandPopCount?: number }).__brandPopCount ?? 0))
       .toBe(1);
 
     await page.getByRole('button', { name: SECOND_DEMO }).click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog.getByRole('heading', { name: 'Second Test' })).toBeVisible();
+    const player = gamePage(page);
+    await expect(player.getByRole('heading', { name: 'Second Test' })).toBeVisible();
     await page.waitForTimeout(500);
-    await expect(dialog.getByRole('heading', { name: 'Second Test' })).toBeVisible();
+    await expect(player.getByRole('heading', { name: 'Second Test' })).toBeVisible();
     expect(routes.posts()).toBe(2);
   });
 
@@ -381,8 +401,8 @@ test.describe('demo game launch', () => {
     const routes = await installLaunchRoutes(page);
     await page.goto('/live-casino');
     await expect(page.getByText('Demo unavailable')).toBeVisible();
-    await page.getByRole('heading', { name: 'Test Blackjack' }).click();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.getByRole('heading', { name: 'Test Blackjack' }).click({ force: true });
+    await expect(gamePage(page)).toHaveCount(0);
     expect(routes.posts()).toBe(0);
   });
 
@@ -404,7 +424,7 @@ test('keeps two games mounted and does not relaunch the one that stays open', as
   await page.getByRole('button', { name: BOOK_DEMO }).click();
   await expect(demoFrame(page, 'Book of Tests').locator('#fake-game')).toHaveText('Fake game ready');
 
-  await page.getByRole('button', { name: 'Add game' }).click();
+  await page.locator('[data-open-games]').getByRole('button', { name: 'Add game' }).click();
   await page.getByRole('button', { name: SECOND_DEMO }).click();
   await expect(demoFrame(page, 'Second Test').locator('#fake-game')).toHaveText('Fake game ready');
   await expect(page.locator('iframe[title="Book of Tests demo"]')).toHaveCount(1);
@@ -452,10 +472,13 @@ test.describe('mobile demo launch', () => {
     await openCasino(page);
     await page.getByRole('button', { name: BOOK_DEMO }).click();
 
-    const dialog = page.getByRole('dialog');
-    const iframe = dialog.locator('iframe[title="Book of Tests demo"]');
+    const player = gamePage(page);
+    const iframe = player.locator('iframe[title="Book of Tests demo"]');
     await expect(iframe).toBeVisible();
-    await expect(dialog.getByRole('button', { name: 'Back to lobby' })).toBeVisible();
+    await expect(page.locator('header')).toBeVisible();
+    await expect(page.locator('footer')).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(player.getByRole('button', { name: 'Back to lobby' })).toBeVisible();
     await expect(demoFrame(page, 'Book of Tests').locator('#fake-game')).toHaveText('Fake game ready');
 
     const box = await iframe.boundingBox();
@@ -556,7 +579,7 @@ test.describe('desktop background games stay live', () => {
     expect(book.parked).toBe(false);
     await expectKeepsRunning(page, 'Book of Tests');
 
-    await page.getByRole('button', { name: 'Add game' }).click();
+    await page.locator('[data-open-games]').getByRole('button', { name: 'Add game' }).click();
     const whileChoosing = await frameSnapshot(page, 'Book of Tests');
     expect(whileChoosing.instance).toBe(book.instance);
     expect(whileChoosing.src).toBe(book.src);
@@ -632,5 +655,44 @@ test.describe('desktop background games stay live', () => {
     await expectKeepsRunning(page, 'Book of Tests');
     expect(routes.posts()).toBe(2);
     expect(routes.frameHits()).toBe(2);
+  });
+
+  test('keeps the open games bar on other routes and returns without a new launch', async ({ page }) => {
+    const routes = await installLaunchRoutes(page);
+    await openCasino(page);
+    await page.getByRole('button', { name: BOOK_DEMO }).click();
+    await expect(demoFrame(page, 'Book of Tests').locator('#fake-game')).toHaveText('Fake game ready');
+    const book = await frameSnapshot(page, 'Book of Tests');
+
+    await page.getByRole('link', { name: 'Sports' }).first().click();
+    await expect(page).toHaveURL(/\/sports/);
+    await expect(page.getByRole('banner')).toBeVisible();
+    await expect(page.locator('footer')).toBeVisible();
+    await expect(page.locator('[data-open-games]')).toBeVisible();
+    await expect(gamePage(page)).toHaveCount(0);
+    const parked = await frameSnapshot(page, 'Book of Tests');
+    expect(parked.instance).toBe(book.instance);
+    expect(parked.parked).toBe(true);
+    expect(parked.opacity).toBe('0');
+    expect(parked.display).not.toBe('none');
+    expect(parked.width).toBeGreaterThan(100);
+
+    await page.getByRole('tab', { name: 'Book of Tests' }).click();
+    await expect(gamePage(page)).toBeVisible();
+    await expect(page.getByRole('banner')).toBeVisible();
+    await expect(page.locator('footer')).toBeVisible();
+    const restored = await frameSnapshot(page, 'Book of Tests');
+    expect(restored.instance).toBe(book.instance);
+    expect(restored.parked).toBe(false);
+    expect(routes.posts()).toBe(1);
+    expect(routes.frameHits()).toBe(1);
+
+    await page.getByRole('link', { name: 'Sports' }).first().click();
+    await expect(page).toHaveURL(/\/sports/);
+    await expect(gamePage(page)).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'The book is open' })).toBeVisible();
+    expect((await frameSnapshot(page, 'Book of Tests')).instance).toBe(book.instance);
+    expect(routes.posts()).toBe(1);
+    expect(routes.frameHits()).toBe(1);
   });
 });

@@ -86,6 +86,8 @@ describe('header and side menu', () => {
     expect(headers).toHaveLength(1);
     expect(footers).toHaveLength(1);
     expect(main.indexOf('Sports room')).toBeGreaterThan(-1);
+    expect(main.indexOf('id="game-page-slot"')).toBeGreaterThan(-1);
+    expect(main.indexOf('id="game-page-slot"')).toBeLessThan(main.indexOf('Sports room'));
     expect(main.indexOf('Sports room')).toBeLessThan(main.indexOf('<footer'));
     expect(main).toContain('Casino, live tables, and sports');
     expect(html).not.toContain('Create account');

@@ -177,7 +177,8 @@ export function Shell({ children }: { children: ReactNode }) {
           >
             <ProductNav />
           </div>
-          {children}
+          <div id="game-page-slot" />
+          <div className="route-content">{children}</div>
           <SiteFooter />
         </main>
         <nav

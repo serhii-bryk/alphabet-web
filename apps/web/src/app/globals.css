@@ -23,7 +23,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .sportsbook {
   flex: none;
   width: 100%;
-  height: calc(100dvh - var(--header-h) - var(--bottom-h) - 13rem);
+  height: calc(100dvh - var(--header-h) - var(--bottom-h) - var(--open-games-h) - 13rem);
   min-height: 20rem;
 }
 /* Product-area atmosphere: a fixed, low-contrast layer behind content. */
@@ -291,7 +291,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 }
 @media (min-width: 640px) {
   .sports-hero { height: 11.5rem; }
-  .sportsbook { height: calc(100dvh - var(--header-h) - var(--bottom-h) - 16.25rem); }
+  .sportsbook { height: calc(100dvh - var(--header-h) - var(--bottom-h) - var(--open-games-h) - 16.25rem); }
 }
 @media (hover: hover) {
   .lobby-hero:hover .banner-photo,
@@ -575,7 +575,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 /*
   Stacking:
   page content auto, lobby section nav 20, mobile nav 40,
-  desktop game windows 52, support chat 60, header and sidebar 64,
+  game page 1, parked games 52, open games bar 55, support chat 60, header and sidebar 64,
   command search 70, mobile menu 70, toasts 80, mobile game workspace 90,
   auth cashier and critical dialogs 95.
 */
@@ -697,14 +697,57 @@ button, a { -webkit-tap-highlight-color: transparent; }
   font-size: 0.75rem;
   line-height: 1.4;
 }
-.desktop-game-layer {
+#app-shell {
+  --sidebar-w: 0px;
+  --game-origin-x: 0px;
+  --open-games-h: 0px;
+}
+#app-shell[data-has-open-games] { --open-games-h: 5.75rem; }
+.route-content { display: contents; }
+#app-shell[data-game-page-active] .route-content { display: none; }
+#app-shell[data-has-open-games] {
+  padding-bottom: calc(var(--bottom-h) + var(--open-games-h));
+}
+.open-games-bar {
+  position: fixed;
+  z-index: 55;
+  inset-inline: 0;
+  bottom: var(--bottom-h);
+  padding: 0.75rem;
+  pointer-events: none;
+}
+.game-page-host { position: relative; z-index: 1; min-width: 0; }
+.game-page-host-parked {
   position: fixed;
   z-index: 52;
   top: var(--header-h);
-  bottom: 0;
+  bottom: calc(var(--bottom-h) + var(--open-games-h));
   inset-inline: 0;
   pointer-events: none;
-  isolation: isolate;
+}
+.shell:not(.shell-sports) .game-page-host:not(.game-page-host-parked) {
+  width: calc(100% + 2rem);
+  margin-inline: -1rem;
+}
+.game-page-window .game-stage {
+  height: calc(100dvh - var(--header-h) - var(--bottom-h) - var(--open-games-h) - 8.5rem);
+  min-height: 16rem;
+}
+.game-page-host .game-demo-prompt { top: calc(3.5rem + 28dvh); }
+.game-float-max {
+  top: calc(var(--header-h) + 0.5rem);
+  right: 0.5rem;
+  bottom: calc(var(--bottom-h) + var(--open-games-h) + 0.5rem);
+  left: calc(var(--game-origin-x) + 0.5rem);
+  width: auto;
+  height: auto;
+}
+[dir='rtl'] .game-float-max {
+  right: calc(var(--sidebar-w) + 0.5rem);
+  left: 0.5rem;
+}
+#app-shell[data-has-open-games] .support-launcher {
+  bottom: calc(var(--bottom-h) + var(--open-games-h) + 0.75rem);
 }
 /*
   Parked games stay mounted, full size, and in the viewport. Moving them offscreen
@@ -750,7 +793,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .main { padding: 1.5rem 2rem 3rem; }
   .shell-sports .main { padding: 0; }
   .shell-sports .main > footer { padding-inline: 2rem; }
-  .sportsbook { height: calc(100dvh - var(--header-h) - 12.75rem); min-height: 28rem; }
+  .sportsbook { height: calc(100dvh - var(--header-h) - var(--open-games-h) - 12.75rem); min-height: 28rem; }
   .desktop-only { display: flex; } .mobile-only { display: none !important; }
   .desktop-only:empty { display: none; }
   .support-launcher { display: none; }
@@ -760,8 +803,21 @@ button, a { -webkit-tap-highlight-color: transparent; }
     width: min(24rem, 100%);
     box-shadow: var(--shadow-pop);
   }
-  #app-shell .desktop-game-layer { inset-inline-start: 236px; }
-  #app-shell.sidebar-collapsed .desktop-game-layer { inset-inline-start: 76px; }
+  #app-shell { --sidebar-w: 236px; --game-origin-x: var(--sidebar-w); }
+  #app-shell.sidebar-collapsed { --sidebar-w: 76px; }
+  [dir='rtl'] #app-shell { --game-origin-x: 0px; }
+  #app-shell[data-has-open-games] { padding-bottom: var(--open-games-h); }
+  .open-games-bar { bottom: 0; inset-inline-start: var(--sidebar-w); }
+  .game-page-host-parked { bottom: var(--open-games-h); inset-inline-start: var(--sidebar-w); }
+  .shell:not(.shell-sports) .game-page-host:not(.game-page-host-parked) {
+    width: calc(100% + 4rem);
+    margin-inline: -2rem;
+  }
+  .game-page-window .game-stage {
+    height: calc(100dvh - var(--header-h) - var(--open-games-h) - 5rem);
+    min-height: 22rem;
+  }
+  .game-float-max { bottom: calc(var(--open-games-h) + 0.5rem); }
   .lobby-section-nav {
     position: sticky;
     top: var(--header-h);
