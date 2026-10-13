@@ -105,7 +105,7 @@ export function LobbyView({
       <LobbyGridScroll token={scrollToken} />
       {browsing && <LobbyHero startId={pathname === '/live-casino' ? 'live' : 'casino'} />}
       {browsing && <LobbyProductWorlds pathname={pathname} />}
-      <LobbySectionNav pathname={pathname} showPromotions={browsing} />
+      <LobbySectionNav pathname={pathname} />
 
       <div className="mb-4 flex items-end justify-between">
         <div>

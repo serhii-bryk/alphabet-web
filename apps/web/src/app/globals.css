@@ -207,6 +207,14 @@ button, a { -webkit-tap-highlight-color: transparent; }
   filter: saturate(1.14) contrast(1.06);
   transition: transform var(--dur-slow) var(--ease-out);
 }
+@keyframes banner-ambient {
+  from { transform: scale(1.04) translate3d(0, 0, 0); }
+  to { transform: scale(1.055) translate3d(-1.4%, -0.8%, 0); }
+}
+@keyframes banner-glow {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-3%, 2%, 0); }
+}
 .banner-light {
   background:
     radial-gradient(ellipse at 78% 38%, rgb(255 206 120 / .2), transparent 34%),
@@ -293,9 +301,52 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .sports-hero { height: 11.5rem; }
   .sportsbook { height: calc(100dvh - var(--header-h) - var(--bottom-h) - var(--open-games-h) - 16.25rem); }
 }
+.lobby-hero,
+.page-hero {
+  --banner-x: 0;
+  --banner-y: 0;
+  cursor: default;
+}
+.lobby-hero :is(a[href], button:not(:disabled)),
+.page-hero :is(a[href], button:not(:disabled)) { cursor: pointer; }
+.lobby-hero button:disabled,
+.page-hero button:disabled { cursor: not-allowed; }
+.lobby-hero :is(input, select, textarea),
+.page-hero :is(input, select, textarea) { cursor: auto; }
+@media (hover: hover) and (pointer: fine) {
+  .lobby-hero .banner-photo,
+  .page-hero .banner-photo {
+    transform: translate3d(calc(var(--banner-x) * 14px), calc(var(--banner-y) * 10px), 0) scale(1.045);
+    transition: transform 280ms var(--ease-out);
+  }
+  .lobby-hero .banner-light,
+  .page-hero .banner-light {
+    transform: translate3d(calc(var(--banner-x) * -22px), calc(var(--banner-y) * -16px), 0);
+    transition: transform 420ms var(--ease-out);
+  }
+}
+@media (hover: none), (pointer: coarse) {
+  .lobby-hero .banner-photo,
+  .page-hero .banner-photo {
+    animation: banner-ambient 18s var(--ease-in-out) infinite alternate;
+    transition: none;
+  }
+  .lobby-hero .banner-light,
+  .page-hero .banner-light {
+    animation: banner-glow 18s var(--ease-in-out) infinite alternate;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lobby-hero .banner-photo,
+  .page-hero .banner-photo,
+  .lobby-hero .banner-light,
+  .page-hero .banner-light {
+    animation: none !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
 @media (hover: hover) {
-  .lobby-hero:hover .banner-photo,
-  .page-hero:hover .banner-photo,
   .promo-card:hover .banner-photo { transform: scale(var(--zoom)); }
 }
 .product-worlds {

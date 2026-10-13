@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 
 const sources = {
@@ -29,8 +32,55 @@ export function BrandBanner({
   scrim?: 'side' | 'stage' | 'none';
   position?: string;
 }) {
+  const frameRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const node = frameRef.current;
+    const host = node?.closest('.lobby-hero, .page-hero');
+    if (!(host instanceof HTMLElement) || host.closest('a')) return;
+    if (host.dataset.bannerMotion === 'on') return;
+    const fine = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (!fine.matches || reduced.matches) return;
+
+    host.dataset.bannerMotion = 'on';
+    let frame = 0;
+    let clientX = 0;
+    let clientY = 0;
+    const paint = () => {
+      frame = 0;
+      const rect = host.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const x = (clientX - rect.left) / rect.width - 0.5;
+      const y = (clientY - rect.top) / rect.height - 0.5;
+      host.style.setProperty('--banner-x', x.toFixed(3));
+      host.style.setProperty('--banner-y', y.toFixed(3));
+    };
+    const onMove = (event: PointerEvent) => {
+      clientX = event.clientX;
+      clientY = event.clientY;
+      if (frame) return;
+      frame = window.requestAnimationFrame(paint);
+    };
+    const reset = () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = 0;
+      host.style.setProperty('--banner-x', '0');
+      host.style.setProperty('--banner-y', '0');
+    };
+    host.addEventListener('pointermove', onMove, { passive: true });
+    host.addEventListener('pointerleave', reset);
+    return () => {
+      host.removeEventListener('pointermove', onMove);
+      host.removeEventListener('pointerleave', reset);
+      if (frame) window.cancelAnimationFrame(frame);
+      delete host.dataset.bannerMotion;
+      host.style.removeProperty('--banner-x');
+      host.style.removeProperty('--banner-y');
+    };
+  }, []);
+
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0" data-banner={variant}>
+    <div ref={frameRef} aria-hidden className="pointer-events-none absolute inset-0" data-banner={variant}>
       <Image
         src={sources[variant]}
         alt=""

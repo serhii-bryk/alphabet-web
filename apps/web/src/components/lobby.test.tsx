@@ -252,8 +252,10 @@ describe('catalog lobby UI', () => {
     expect(html).toContain('id="games"');
     expect(html).toContain('href="#providers"');
     expect(html).toContain('id="providers"');
-    expect(html).toContain('href="#promotions"');
-    expect(html).toContain('id="promotions"');
+    expect(html).not.toContain('href="#promotions"');
+    expect(html).not.toContain('id="promotions"');
+    expect(html).not.toContain('Welcome on the floor');
+    expect(html).not.toContain('Weekend live rooms');
     expect(html).toContain('href="/live-casino#games"');
     expect(html).toContain('id="game-floor"');
     expect(html).toContain('id="live-discovery"');
@@ -267,14 +269,12 @@ describe('catalog lobby UI', () => {
     const gamesAt = html.indexOf('id="games"');
     const live = html.indexOf('id="live-discovery"');
     const providers = html.indexOf('id="providers"');
-    const promotions = html.indexOf('id="promotions"');
     const journal = html.indexOf('id="journal"');
     expect(worlds).toBeGreaterThan(-1);
     expect(worlds).toBeLessThan(gamesAt);
     expect(gamesAt).toBeLessThan(live);
     expect(live).toBeLessThan(providers);
-    expect(providers).toBeLessThan(promotions);
-    expect(promotions).toBeLessThan(journal);
+    expect(providers).toBeLessThan(journal);
 
     const worldMarkup = html.slice(worlds, html.indexOf('</section>', worlds));
     expect(worldMarkup).toContain('product-world-slots');

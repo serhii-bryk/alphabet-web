@@ -4,7 +4,7 @@ Source of truth for the current product. Read this before reconstructing history
 
 Update this file at the end of every completed milestone, and whenever an important architecture or integration decision changes. Record names and decisions only. Never store secrets, passwords, API keys, tokens, HMAC material, or personal test-account credentials.
 
-Last updated: 2026-10-13 (auth-aware shell).
+Last updated: 2026-10-13 (promotions page, banner motion).
 
 ## Product goal
 
@@ -41,7 +41,7 @@ Fast Development Mode, coordinated by `.cursor/agents/orchestrator.md`.
 - Casino and Live Casino lobbies backed by the Platform game catalog, with search, categories, and a provider filter. Studios that share a `groupedCode` are shown once and filter with `group` (`grouped_provider`). A short Popular rail appears only when a page has more than eight games; the rest of the page is a grid.
 - The user-facing name is AlphaBet. Locales are English (`en`) and Arabic (`ar`), with `dir="rtl"` for Arabic and a header language switch that keeps the current path. Homepage, product, promo, and journal banners use original images in `apps/web/public/banners/`.
 - Homepage hero is local product content, not a CMS. For guests it is the main signup entry: Register and a quick email, password, and country form open the existing registration dialog and can prefill those three fields in memory. Google, Apple, and Phone stay visible and disabled. Signed-in players see Play and Explore sports instead, with no signup controls. Casino and Sports are the two main choices under the hero; Live Casino stays a secondary casino link. Join, Register, and Create account stay hidden for a signed-in player and while the session is still resolving. Guests still get them from the header, hero, footer, and promotions. Signed-in players get Account in that footer slot and Deposit on promotions. `/register` remains a direct guest visit. It is not the header or hero path.
-- Product switch for Casino, Live Casino, and Sports is in the header on desktop and a sticky bar on mobile. The same header, sidebar, mobile navigation, and footer wrap every normal route, including Sports. The sportsbook iframe keeps its own height and the footer follows it. Short info pages (journal, support, responsible gaming, terms, privacy) ship with the shell. Promotions stay an honest placeholder.
+- Product switch for Casino, Live Casino, and Sports is in the header on desktop and a sticky bar on mobile. The same header, sidebar, mobile navigation, and footer wrap every normal route, including Sports. The sportsbook iframe keeps its own height and the footer follows it. Short info pages (journal, support, responsible gaming, terms, privacy) ship with the shell. Promotions are an honest placeholder on `/promotions`, linked from the desktop sidebar and the mobile navigation. Casino and Live Casino lobbies do not carry a promotions rail. Non-clickable lobby and page heroes shift the image slightly with the pointer on a fine pointer, and drift with CSS on touch. Clickable cards keep their hover. `prefers-reduced-motion` leaves those heroes still.
 - Demo game launch, and real-money launch for a signed-in player. A game card click launches immediately. Guests launch demo when the catalog allows it; otherwise the existing login dialog opens. Signed-in players launch real money. The same game in the same mode is focused instead of launched again. A different mode replaces that panel with a new launch. Logout closes real panels and leaves demo panels. Login does not relabel a demo iframe as real.
 - Game workspace: up to 5 open games, each with its own launch state. A normal launch is an in-flow page inside the shell, with the site header, the game player, the footer, and the open-games bar. The bar stays on every normal route while games are open, including Sports and Promotions. Leaving the page parks the game without unmounting its iframe; choosing its tab returns to that same session. Pop-out is an in-app floating window (drag, resize, minimize, maximize, restore), not a separate browser window, and it does not take the site header or footer. Parked iframes stay mounted, full size, and in the viewport at opacity 0 so they keep running. There is no dedicated game route.
 - Guest demo play is timed in the browser (`alphabet.demoPlay.v1`). Defaults are 10 minutes for the soft prompt and 20 minutes for the stronger prompt. `NEXT_PUBLIC_DEMO_PROMPT_SOFT_MS` / `NEXT_PUBLIC_DEMO_PROMPT_STRONG_MS`, and non-production `demoSoftMs` / `demoStrongMs` query params, override them. Register and Sign in open the existing dialogs. Dismiss leaves the game running. An authenticated session stops the prompts.
@@ -148,7 +148,7 @@ Web:
 
 - Casino and Live Casino remain the active product surface.
 - Sportsbook is a reserved destination, not a current build.
-- A real promotions view will replace the placeholder and the mock homepage rail.
+- A real promotions system will replace the placeholder on `/promotions`. The lobby no longer carries a mock promotions rail.
 - Email verification is not required. `email_verified` stays on the profile and does not gate play.
 
 ## Next recommended milestone
