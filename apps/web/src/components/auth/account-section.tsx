@@ -27,7 +27,7 @@ function PanelError({ message, onRetry }: { message: string; onRetry: () => void
       <Button
         type="button"
         onClick={onRetry}
-        className="bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-3)]"
+        variant="secondary"
       >
         <RotateCcw aria-hidden size={16} />
         {t('retry')}
@@ -102,7 +102,7 @@ function BalancePanel() {
         <Button
           type="button"
           onClick={() => openCashier('withdraw')}
-          className="bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-3)]"
+          variant="secondary"
         >
           {t('withdraw')}
         </Button>

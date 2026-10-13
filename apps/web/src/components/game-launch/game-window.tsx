@@ -1,22 +1,27 @@
 'use client';
 
-import { memo, useRef, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
-import { Maximize2, Minimize2, Shrink, X } from 'lucide-react';
+import { memo, useLayoutEffect, useRef, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
+import { ArrowLeft, Info, Maximize2, Minimize2, PictureInPicture2, Plus, Shrink, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { GameThumbnail } from '../game-card';
 import { GameFrame } from './game-frame';
 import { GameInfo } from './game-info';
+import { FavoriteButton } from '../personalization/favorite-button';
+import { FullscreenButton, ToolButton } from './game-toolbar';
 import type { Frame, GamePanel } from './workspace-state';
 
 const iconButton =
-  'inline-grid size-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]';
+  'window-control inline-grid size-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--muted)]';
 
 interface GameWindowProps {
   panel: GamePanel;
   focused: boolean;
+  browsing?: boolean;
+  clearBottom?: boolean;
   onFocus: () => void;
   onClose: () => void;
   onKeepOpen: () => void;
+  onAddGame: () => void;
   onMinimize: () => void;
   onMaximize: () => void;
   onRestore: () => void;
@@ -32,26 +37,68 @@ interface GameWindowProps {
 export function GameWindow(props: GameWindowProps) {
   const live = useRef(props);
   live.current = props;
-  return <GameWindowBody panel={props.panel} focused={props.focused} live={live} />;
+  return (
+    <GameWindowBody
+      panel={props.panel}
+      focused={props.focused}
+      browsing={props.browsing}
+      clearBottom={props.clearBottom}
+      live={live}
+    />
+  );
+}
+
+function usePopOutTransition(section: RefObject<HTMLElement | null>, presentation: GamePanel['presentation']) {
+  const from = useRef<DOMRect | null>(null);
+  useLayoutEffect(() => {
+    const start = from.current;
+    from.current = null;
+    const element = section.current;
+    if (!start || !element || presentation !== 'floating') return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || typeof element.animate !== 'function') return;
+    const end = element.getBoundingClientRect();
+    if (!end.width || !end.height) return;
+    const scaleX = start.width / end.width;
+    const scaleY = start.height / end.height;
+    element.animate(
+      [
+        { transformOrigin: 'top left', transform: `translate(${start.left - end.left}px, ${start.top - end.top}px) scale(${scaleX}, ${scaleY})`, opacity: 0.85 },
+        { transformOrigin: 'top left', transform: 'none', opacity: 1 },
+      ],
+      { duration: 280, easing: 'cubic-bezier(.22, .8, .24, 1)' },
+    );
+  }, [presentation, section]);
+  return (element: HTMLElement | null) => {
+    from.current = element?.getBoundingClientRect() ?? null;
+  };
 }
 
 const GameWindowBody = memo(function GameWindowBody({
   panel,
   focused,
+  browsing = false,
+  clearBottom = false,
   live,
 }: {
   panel: GamePanel;
   focused: boolean;
+  browsing?: boolean;
+  clearBottom?: boolean;
   live: RefObject<GameWindowProps>;
 }) {
   const t = useTranslations('workspace');
+  const section = useRef<HTMLElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
   const { game } = panel.launch.target;
   const provider = game.provider?.displayName || game.provider?.name || t('independent');
-  const modeLabel = panel.launch.target.mode === 'demo' ? t('demo') : t('real');
+  const demo = panel.launch.target.mode === 'demo';
   const page = panel.presentation === 'page';
+  const docked = page || panel.presentation === 'background';
   const maximized = panel.presentation === 'maximized';
   const floating = panel.presentation === 'floating';
   const titleId = `game-window-${panel.id}`;
+  const infoId = `game-info-${panel.id}`;
+  const capturePopOutOrigin = usePopOutTransition(section, panel.presentation);
 
   const onTitlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!floating || event.button !== 0) return;
@@ -107,37 +154,55 @@ const GameWindowBody = memo(function GameWindowBody({
     handle.addEventListener('pointercancel', end);
   };
 
-  const style = page || maximized
+  const popOut = () => {
+    capturePopOutOrigin(section.current);
+    live.current.onKeepOpen();
+  };
+  const parked =
+    panel.presentation === 'minimized' ||
+    panel.presentation === 'background' ||
+    (browsing && page);
+
+  const style = docked || maximized
     ? { zIndex: panel.z }
     : { left: panel.frame.x, top: panel.frame.y, width: panel.frame.width, height: panel.frame.height, zIndex: panel.z };
 
   return (
     <section
+      ref={section}
       aria-label={game.title}
       data-game-page={page ? '' : undefined}
-      hidden={panel.presentation === 'minimized'}
+      data-game-parked={parked ? '' : undefined}
+      inert={parked || undefined}
       onPointerDown={() => live.current.onFocus()}
+      data-focused={focused && !docked ? '' : undefined}
+      data-open-game={docked ? '' : undefined}
       style={style}
       className={
-        page
-          ? 'pointer-events-auto absolute inset-0 flex flex-col overflow-hidden bg-[var(--bg)] pb-20'
-          : `game-float pointer-events-auto absolute flex flex-col overflow-hidden rounded-[var(--radius-md)] border bg-[var(--surface)] shadow-[var(--shadow-1)] ${
-              maximized ? 'inset-2' : ''
-            } ${focused ? 'border-[var(--accent)]' : 'border-[var(--line)]'}`
+        `${
+          docked
+            ? 'pointer-events-auto absolute inset-0 flex flex-col overflow-y-auto overscroll-contain bg-[var(--bg)]'
+            : `game-float pointer-events-auto absolute flex flex-col overflow-hidden rounded-[var(--radius-md)] border bg-[var(--surface)] shadow-[var(--shadow-1)] ${
+                maximized ? 'inset-2' : ''
+              } ${focused ? 'border-[var(--accent)]' : 'border-[var(--line)]'}`
+        }${parked ? ' game-live-parked' : ''}`
       }
     >
       <div
         onPointerDown={onTitlePointerDown}
         className={`relative z-20 flex shrink-0 items-center gap-2 border-b border-[var(--line)] px-3 ${
-          page ? 'h-14 bg-[var(--surface)]' : 'h-11 cursor-grab px-2 active:cursor-grabbing'
+          docked
+            ? 'sticky top-0 h-14 bg-[var(--surface)]/95 backdrop-blur-sm'
+            : `game-float-chrome h-11 cursor-grab select-none px-2 active:cursor-grabbing ${focused ? 'bg-[var(--accent-soft)]' : 'bg-[var(--surface)]'}`
         }`}
       >
-        {page && (
+        {docked && (
           <button
             type="button"
             onClick={() => live.current.onClose()}
-            className="inline-flex h-9 shrink-0 items-center rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3 text-sm font-semibold hover:bg-[var(--surface-3)]"
+            className="btn btn-secondary inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--line)] px-3 text-sm font-semibold"
           >
+            <ArrowLeft aria-hidden size={16} className="rtl:-scale-x-100" />
             {t('backToLobby')}
           </button>
         )}
@@ -148,21 +213,32 @@ const GameWindowBody = memo(function GameWindowBody({
           <h2 id={focused ? titleId : undefined} className="truncate text-sm font-bold">
             {game.title}
           </h2>
-          <p className="truncate text-xs text-[var(--muted)]">
-            {provider} · {modeLabel}
+          <p className="flex min-w-0 items-center gap-1.5 text-xs text-[var(--muted)]">
+            <span className="truncate">{provider}</span>
+            {demo && <span className="game-mode-chip">{t('demo')}</span>}
           </p>
         </div>
-        {page ? (
-          <button
-            type="button"
-            data-keep-open=""
-            onClick={() => live.current.onKeepOpen()}
-            className="inline-flex h-9 shrink-0 items-center rounded-[var(--radius-md)] bg-[var(--accent)] px-3 text-sm font-black text-[var(--accent-contrast)] hover:bg-[var(--accent-strong)]"
-          >
-            {t('keepOpen')}
-          </button>
+        {docked ? (
+          <div role="toolbar" aria-label={t('gameControls')} className="game-toolbar">
+            <FavoriteButton game={game} variant="tool" />
+            <FullscreenButton target={stage} title={game.title} />
+            <ToolButton label={t('popOutTitle', { title: game.title })} tip={t('popOut')} onClick={popOut} data-pop-out="">
+              <PictureInPicture2 aria-hidden size={17} />
+            </ToolButton>
+            <ToolButton label={t('addGame')} onClick={() => live.current.onAddGame()} data-add-game="">
+              <Plus aria-hidden size={17} />
+            </ToolButton>
+            <ToolButton
+              label={t('infoTitle')}
+              onClick={() => document.getElementById(infoId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            >
+              <Info aria-hidden size={17} />
+            </ToolButton>
+          </div>
         ) : (
           <>
+            <FavoriteButton game={game} variant="tool" />
+            <FullscreenButton target={stage} title={game.title} />
             <button type="button" className={iconButton} aria-label={t('minimize', { title: game.title })} onClick={() => live.current.onMinimize()}>
               <Minimize2 aria-hidden size={15} />
             </button>
@@ -174,21 +250,26 @@ const GameWindowBody = memo(function GameWindowBody({
             >
               {maximized ? <Shrink aria-hidden size={15} /> : <Maximize2 aria-hidden size={15} />}
             </button>
-            <button type="button" className={iconButton} aria-label={t('closeGame', { title: game.title })} onClick={() => live.current.onClose()}>
+            <button type="button" data-close="" className={iconButton} aria-label={t('closeGame', { title: game.title })} onClick={() => live.current.onClose()}>
               <X aria-hidden size={15} />
             </button>
           </>
         )}
       </div>
-      <GameFrame
-        state={panel.launch}
-        onRetry={() => live.current.onRetry()}
-        onFrameLoad={(attempt) => live.current.onFrameLoad(attempt)}
-        onLoadTimeout={(attempt) => live.current.onLoadTimeout(attempt)}
-        onSignIn={() => live.current.onSignIn?.()}
-        onBackToLobby={() => live.current.onBackToLobby()}
-      />
-      {page && <GameInfo game={game} />}
+      <div
+        ref={stage}
+        className={`game-stage flex min-h-0 flex-col bg-black ${docked ? `${clearBottom ? 'h-[calc(100%-8.25rem)]' : 'h-[calc(100%-3.5rem)]'} min-h-[360px] shrink-0` : 'flex-1'}`}
+      >
+        <GameFrame
+          state={panel.launch}
+          onRetry={() => live.current.onRetry()}
+          onFrameLoad={(attempt) => live.current.onFrameLoad(attempt)}
+          onLoadTimeout={(attempt) => live.current.onLoadTimeout(attempt)}
+          onSignIn={() => live.current.onSignIn?.()}
+          onBackToLobby={() => live.current.onBackToLobby()}
+        />
+      </div>
+      {docked && <GameInfo id={infoId} game={game} />}
       {floating && (
         <button
           type="button"

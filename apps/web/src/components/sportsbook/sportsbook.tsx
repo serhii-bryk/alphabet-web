@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { CircleAlert, LoaderCircle, RotateCcw } from 'lucide-react';
+import { CircleAlert, RotateCcw } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import type { SportsLaunchErrorCode, SportsLaunchResponse } from '@brand/contracts';
 import { isAbortError } from '@/data/browser-json';
 import { SportsRequestError, requestSportsLaunch } from '@/data/sports-browser';
 import { useAuthDialog } from '../auth/auth-provider';
 import { useEndSession, useSession } from '../auth/session';
+import { AlphaBetLoader } from '../alphabet-loader';
 import { Button } from '../ui';
 import {
   SPORTS_LOAD_TIMEOUT_MS,
@@ -159,12 +160,8 @@ export function Sportsbook({ path }: { path?: string }) {
       )}
       {showOpaqueLoader && (
         <div className="absolute inset-0 grid place-items-center bg-[var(--bg)] p-6">
-          <p role="status" className="flex items-center gap-2 text-sm font-semibold">
-            <LoaderCircle
-              aria-hidden
-              size={18}
-              className="animate-spin text-[var(--accent)] motion-reduce:animate-none"
-            />
+          <p role="status" className="fade-enter flex flex-col items-center gap-3 text-sm font-semibold">
+            <AlphaBetLoader size="lg" />
             {t('loading')}
           </p>
         </div>
@@ -173,13 +170,9 @@ export function Sportsbook({ path }: { path?: string }) {
         <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
           <p
             role="status"
-            className="flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold shadow"
+            className="fade-enter flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold shadow-[var(--shadow-2)]"
           >
-            <LoaderCircle
-              aria-hidden
-              size={14}
-              className="animate-spin text-[var(--accent)] motion-reduce:animate-none"
-            />
+            <AlphaBetLoader size="sm" />
             {t('opening')}
           </p>
         </div>
@@ -188,7 +181,7 @@ export function Sportsbook({ path }: { path?: string }) {
         <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
           <p
             role="status"
-            className="flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold shadow"
+            className="fade-enter flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold shadow-[var(--shadow-2)]"
           >
             {t('reconnecting')}
           </p>
@@ -198,7 +191,7 @@ export function Sportsbook({ path }: { path?: string }) {
         <div className="absolute inset-x-3 bottom-3 flex justify-center">
           <div
             role="status"
-            className="flex w-full max-w-md flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-4 text-start shadow-lg"
+            className="panel motion-enter flex w-full max-w-md flex-col gap-3 rounded-[var(--radius-md)] p-4 text-start shadow-[var(--shadow-pop)]"
           >
             <p className="text-sm font-bold">{t('slowTitle')}</p>
             <p className="text-sm text-[var(--muted)]">{t('slowBody')}</p>

@@ -34,7 +34,7 @@ describe('LoginDialog', () => {
     expect(html).toMatch(/aria-labelledby="([^"]+)".*<h2 id="\1"[^>]*>Sign in<\/h2>/);
     expect(html).toMatch(/<label for="([^"]+)"[^>]*>Email<\/label><input id="\1"/);
     expect(html).toMatch(/<label for="([^"]+)"[^>]*>Password<\/label><input id="\1"/);
-    expect(html).toContain('autoComplete="email"');
+    expect(html).toContain('autoComplete="username"');
     expect(html).toContain('type="password" autoComplete="current-password"');
     expect(html).not.toContain('role="alert"');
   });
@@ -45,7 +45,7 @@ describe('LoginForm', () => {
     const html = renderUi(<LoginForm pending error={null} onSubmit={noop} />);
     expect(html).toMatch(/<button[^>]*type="submit" disabled="" aria-busy="true"/);
     expect(html).toContain('Signing in…');
-    expect(html).toContain('motion-reduce:animate-none');
+    expect(html).toContain('data-alphabet-loader');
   });
 
   it.each([

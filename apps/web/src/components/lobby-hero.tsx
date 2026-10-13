@@ -6,14 +6,14 @@ import type { RegistrationCountry } from '@brand/contracts';
 import { Link } from '@/i18n/navigation';
 import { fetchRegistrationOptions } from '@/data/registration-browser';
 import { useAuthDialog } from './auth/auth-provider';
+import { readRememberedIdentity } from './auth/remembered-identity';
 import { useSession, type SessionStatus } from './auth/session';
 import { BrandBanner } from './brand-banner';
-import { SearchTrigger } from './search';
 
 const primaryCta =
-  'inline-flex h-11 min-h-11 items-center justify-center rounded-[var(--radius-md)] bg-[var(--accent)] px-4 text-sm font-black text-[var(--accent-contrast)] transition hover:bg-[var(--accent-strong)] motion-reduce:transition-none';
+  'btn btn-primary inline-flex h-11 min-h-11 items-center justify-center rounded-[var(--radius-md)] px-4 text-sm font-black';
 const secondaryCta =
-  'inline-flex h-11 min-h-11 items-center justify-center rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-bold transition hover:border-[var(--accent)] motion-reduce:transition-none';
+  'btn pressable-lift inline-flex h-11 min-h-11 items-center justify-center rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-bold hover:border-[var(--accent-line)]';
 const fieldClass =
   'h-11 w-full rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--bg)] px-3 text-base text-[var(--text)] outline-none transition focus-visible:border-[var(--accent)] motion-reduce:transition-none';
 
@@ -25,11 +25,13 @@ export function LobbyHero({ startId = 'casino' }: { startId?: string }) {
   return (
     <section
       aria-label={t('welcome')}
-      className="relative mb-5 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)]"
+      className="lobby-hero relative mb-6 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] sm:mb-8"
     >
-      <BrandBanner variant="casino" priority sizes="(min-width: 1100px) 1200px, 100vw" />
+      <div className="relative h-32 sm:absolute sm:inset-0 sm:h-auto">
+        <BrandBanner variant="casino" scrim="stage" priority sizes="(min-width: 1100px) 1200px, 100vw" />
+      </div>
       <div
-        className={`relative grid gap-6 p-5 sm:p-7 lg:p-8 ${status === 'guest' ? 'lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,380px)] lg:items-start' : ''}`}
+        className={`banner-copy relative flex flex-col gap-6 p-5 sm:min-h-[19rem] sm:justify-end sm:p-7 lg:min-h-[23rem] lg:p-8 ${status === 'guest' ? 'lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,380px)] lg:items-end' : ''}`}
       >
         <div>
           <p className="text-xs font-black uppercase tracking-[.16em] text-[var(--accent)]">
@@ -117,6 +119,12 @@ function GuestQuickForm() {
   const [error, setError] = useState<QuickRegistrationError | null>(null);
 
   useEffect(() => {
+    const remembered = readRememberedIdentity();
+    if (remembered.email) setEmail((current) => current || remembered.email);
+    if (remembered.country) setCountry((current) => current || remembered.country);
+  }, []);
+
+  useEffect(() => {
     const controller = new AbortController();
     fetchRegistrationOptions(controller.signal)
       .then((result) => {
@@ -145,7 +153,7 @@ function GuestQuickForm() {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)] sm:p-5">
+    <div className="relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[color-mix(in_srgb,var(--surface)_88%,transparent)] p-4 shadow-[var(--shadow-2)] backdrop-blur-md sm:p-5">
       <span aria-hidden className="absolute -end-8 -top-10 size-28 rounded-full bg-[var(--accent)] opacity-20" />
       <div className="relative">
         <p className="text-xs font-black uppercase tracking-[.14em] text-[var(--muted)]">{t('orStart')}</p>
@@ -207,6 +215,9 @@ function GuestQuickForm() {
               className={fieldClass}
             >
               <option value="">{t('chooseCountry')}</option>
+              {country && !countries.some((item) => item.code === country) && (
+                <option value={country}>{country}</option>
+              )}
               {countries.map((item) => (
                 <option key={item.code} value={item.code}>
                   {item.name}
@@ -276,46 +287,4 @@ function quickRegistrationError(
   if (password.length < 8) return { field: 'password', message: t('passwordShort') };
   if (!country) return { field: 'country', message: t('countryRequired') };
   return null;
-}
-
-export function LobbyProductSplit() {
-  const t = useTranslations('split');
-  return (
-    <section aria-label={t('label')} className="mb-8">
-      <div className="mb-3">
-        <h2 className="text-lg font-black tracking-tight">{t('title')}</h2>
-        <p className="mt-1 text-sm text-[var(--muted)]">{t('lede')}</p>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_240px]">
-        <div className="relative flex min-h-[168px] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] p-4 transition hover:border-[var(--accent)] motion-reduce:transition-none">
-          <BrandBanner variant="casino" sizes="(min-width: 1100px) 36vw, 100vw" />
-          <Link href="/casino" className="relative flex min-h-11 flex-1 flex-col rounded-[var(--radius-md)]">
-            <span className="text-[11px] font-black uppercase tracking-[.16em] text-[var(--accent)]">{t('casinoKicker')}</span>
-            <span className="mt-2 text-2xl font-black tracking-tight">{t('casinoTitle')}</span>
-            <span className="mt-2 max-w-sm text-sm leading-relaxed text-[var(--muted)]">{t('casinoBody')}</span>
-          </Link>
-          <Link
-            href="/live-casino"
-            className="relative mt-3 inline-flex h-11 items-center self-start text-sm font-bold text-[var(--accent-strong)]"
-          >
-            {t('live')}
-          </Link>
-        </div>
-        <Link
-          href="/sports"
-          className="relative flex min-h-[168px] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] p-4 transition hover:border-[var(--accent)] motion-reduce:transition-none"
-        >
-          <BrandBanner variant="sports" sizes="(min-width: 1100px) 36vw, 100vw" />
-          <span className="relative text-[11px] font-black uppercase tracking-[.16em] text-[var(--positive)]">{t('sportsKicker')}</span>
-          <span className="relative mt-2 text-2xl font-black tracking-tight">{t('sportsTitle')}</span>
-          <span className="relative mt-2 max-w-sm text-sm leading-relaxed text-[var(--muted)]">{t('sportsBody')}</span>
-        </Link>
-        <div className="flex flex-col justify-center gap-3 rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] p-4 sm:col-span-2 lg:col-span-1">
-          <p className="text-[11px] font-black uppercase tracking-[.16em] text-[var(--muted)]">{t('searchKicker')}</p>
-          <p className="text-sm leading-relaxed text-[var(--muted)]">{t('searchBody')}</p>
-          <SearchTrigger className="min-h-11 w-full justify-between" />
-        </div>
-      </div>
-    </section>
-  );
 }

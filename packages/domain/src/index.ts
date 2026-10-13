@@ -1,106 +1,21 @@
 import type {
   CatalogCategoriesResponse,
-  CatalogCategory,
-  CatalogGame,
   CatalogGameFilters,
   CatalogGamesResponse,
   CatalogLobbyResponse,
-  CatalogProvider,
   CatalogProvidersResponse,
   GameLaunchErrorCode,
   GameLaunchResponse,
   PlatformGameType,
 } from '@brand/contracts';
 import { PlatformClientError } from '@brand/platform';
-import type {
-  PlatformCategory,
-  PlatformClient,
-  PlatformGame,
-  PlatformGameLaunch,
-  PlatformGamesPage,
-  PlatformProvider,
-} from '@brand/platform';
+import type { PlatformClient, PlatformGameLaunch } from '@brand/platform';
 import { isPlayerSessionEnded } from './auth.js';
+import { createCatalogScanCache, loadCatalogGames } from './catalog-filter.js';
+import { mapCategory, mapGamesPage, mapProvider } from './game-map.js';
 
 export { isPlayerSessionEnded };
-
-export function mapProvider(provider: PlatformProvider): CatalogProvider {
-  return {
-    id: String(provider.id),
-    code: provider.code,
-    name: provider.name,
-    displayName: provider.display_name,
-    groupedCode: provider.grouped_code,
-  };
-}
-
-export function mapCategory(category: PlatformCategory): CatalogCategory {
-  return {
-    id: String(category.id),
-    slug: category.slug,
-    name: category.name,
-    parentId: category.parent_id === null ? null : String(category.parent_id),
-    sortOrder: category.sort_order,
-  };
-}
-
-function catalogText(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-function catalogMetric(value: number | string | null): string | null {
-  if (value === null) return null;
-  return catalogText(String(value));
-}
-
-export function mapGame(game: PlatformGame): CatalogGame | null {
-  if (game.type === null) {
-    return null;
-  }
-
-  return {
-    id: String(game.id),
-    slug: game.slug,
-    title: game.name,
-    kind: game.type === 'live-casino' ? 'live' : 'casino',
-    imageUrl: game.icon,
-    provider: game.provider ? mapProvider(game.provider) : null,
-    categories: game.categories.map((category) => ({
-      id: String(category.id),
-      slug: category.slug,
-      fullSlug: category.full_slug,
-      name: category.name,
-      parentId: category.parent_id === null ? null : String(category.parent_id),
-    })),
-    demoPlayEnabled: game.demo_play_enabled === 1,
-    active: game.is_active === 1,
-    rtp: catalogMetric(game.rtp),
-    volatility: catalogMetric(game.volatility),
-    gameType: catalogText(game.provider_game_type),
-    listedAt: catalogText(game.created_at),
-  };
-}
-
-export function mapGamesPage(page: PlatformGamesPage): CatalogGamesResponse {
-  return {
-    games: page.data.flatMap((game) => {
-      const mapped = mapGame(game);
-      return mapped ? [mapped] : [];
-    }),
-    pagination: {
-      page: page.current_page,
-      perPage: page.per_page,
-      total: page.total,
-      lastPage: page.last_page,
-      from: page.from,
-      to: page.to,
-      hasNextPage: page.next_page_url !== null,
-      hasPreviousPage: page.prev_page_url !== null,
-    },
-  };
-}
+export { mapCategory, mapGame, mapGamesPage, mapProvider } from './game-map.js';
 
 export interface CatalogUseCases {
   listGames(filters?: CatalogGameFilters): Promise<CatalogGamesResponse>;
@@ -110,9 +25,13 @@ export interface CatalogUseCases {
 }
 
 export function createCatalogUseCases(platform: PlatformClient): CatalogUseCases {
+  const cache = createCatalogScanCache();
+  const gamesFor = (filters: CatalogGameFilters = {}) =>
+    loadCatalogGames(platform, filters, cache).then(mapGamesPage);
+
   return {
-    async listGames(filters = {}) {
-      return mapGamesPage(await platform.getGames(filters));
+    listGames(filters = {}) {
+      return gamesFor(filters);
     },
     async listProviders() {
       const providers = await platform.getProviders();
@@ -124,17 +43,16 @@ export function createCatalogUseCases(platform: PlatformClient): CatalogUseCases
     },
     async getLobby(type, filters = {}) {
       const [games, providers, categories] = await Promise.all([
-        platform.getGames({ ...filters, type }),
+        gamesFor({ ...filters, type }),
         platform.getProviders(),
         platform.getCategories(),
       ]);
-      const mappedGames = mapGamesPage(games);
       return {
         promotions: [],
         categories: categories.map(mapCategory),
-        sections: [{ id: 'games', title: 'Games', games: mappedGames.games }],
+        sections: [{ id: 'games', title: 'Games', games: games.games }],
         providers: providers.map(mapProvider),
-        pagination: mappedGames.pagination,
+        pagination: games.pagination,
       };
     },
   };
@@ -220,6 +138,13 @@ export type {
 } from './registration.js';
 export { createSportsLaunchUseCases, normalizeSportsPath, SportsLaunchError } from './sports.js';
 export type { SportsLaunchInput, SportsLaunchUseCases } from './sports.js';
+export {
+  createPersonalizationUseCases,
+  mapFavoriteGames,
+  mapPlayedPage,
+  PersonalizationError,
+} from './personalization.js';
+export type { PersonalizationUseCases, PlayedListQuery } from './personalization.js';
 
 export function createGameLaunchUseCases(platform: PlatformClient): GameLaunchUseCases {
   return {

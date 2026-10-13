@@ -13,7 +13,7 @@ vi.mock('@/i18n/navigation', () => ({
 }));
 
 import messages from '../../../messages/en.json';
-import { accountKey } from '../auth/session';
+import { accountKey, useSession } from '../auth/session';
 import { CashierProvider, DepositButton } from './cashier-provider';
 
 const session = {
@@ -191,5 +191,43 @@ describe('cashier', () => {
     const depositCall = vi.mocked(fetch).mock.calls.find((call) => String(call[0]).includes('/api/payments/deposit'));
     expect(String(depositCall?.[1]?.body)).toContain('"methodId":"test-deposit"');
     expect(String(depositCall?.[1]?.body)).toContain('"amount":20');
+  });
+
+  it('never renders Deposit for a guest, including before the session resolves', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => json({ authenticated: false })),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    roots.push(root);
+    function Status() {
+      const { status } = useSession();
+      return <span data-status={status} />;
+    }
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={client}>
+          <NextIntlClientProvider locale="en" messages={messages}>
+            <CashierProvider>
+              <Status />
+              <DepositButton appearance="header" />
+              <DepositButton />
+            </CashierProvider>
+          </NextIntlClientProvider>
+        </QueryClientProvider>,
+      );
+    });
+    expect(document.body.textContent).not.toContain('Deposit');
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      if (document.querySelector('[data-status="guest"]')) break;
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+    }
+    expect(document.querySelector('[data-status="guest"]')).not.toBeNull();
+    expect(document.querySelectorAll('button')).toHaveLength(0);
   });
 });

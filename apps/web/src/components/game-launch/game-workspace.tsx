@@ -9,6 +9,8 @@ import { DesktopGameLayer, ShellPortal } from './desktop-game-layer';
 import { DemoPrompt } from './demo-prompt';
 import { GameFrame } from './game-frame';
 import { GameInfo } from './game-info';
+import { FavoriteButton } from '../personalization/favorite-button';
+import { FullscreenButton } from './game-toolbar';
 import type { DemoPromptLevel } from './demo-play';
 import { useClientDesktop } from './viewport';
 import {
@@ -71,7 +73,7 @@ export function GameWorkspace({
   onLoadTimeout: (id: string, attempt: number) => void;
   onSignIn: (id: string) => void;
   onFocus: (id: string) => void;
-  onKeepOpen: () => void;
+  onKeepOpen: (id: string) => void;
   onMinimize: (id: string) => void;
   onMaximize: (id: string) => void;
   onRestore: (id: string) => void;
@@ -88,6 +90,7 @@ export function GameWorkspace({
   const titleId = useId();
   const dialog = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
   const committed = useClientDesktop();
   const desktop = layout ? layout === 'desktop' : committed === true;
   const mobile = layout ? layout === 'mobile' : committed === false;
@@ -112,7 +115,9 @@ export function GameWorkspace({
         return;
       }
       if (event.key !== 'Tab' || !dialog.current) return;
-      const focusable = Array.from(dialog.current.querySelectorAll<HTMLElement>(focusableSelector));
+      const focusable = Array.from(dialog.current.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+        (element) => !element.closest('[inert]'),
+      );
       if (!focusable.length) return;
       event.preventDefault();
       const current = focusable.indexOf(document.activeElement as HTMLElement);
@@ -155,6 +160,7 @@ export function GameWorkspace({
           onLoadTimeout={onLoadTimeout}
           onSignIn={onSignIn}
           onFocus={onFocus}
+          browsing={browsing}
           onKeepOpen={onKeepOpen}
           onMinimize={onMinimize}
           onMaximize={onMaximize}
@@ -193,7 +199,7 @@ export function GameWorkspace({
             ref={closeButton}
             type="button"
             onClick={onCloseAll}
-            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3 text-sm font-semibold hover:bg-[var(--surface-3)]"
+            className="btn btn-secondary inline-flex h-10 shrink-0 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--line)] px-3 text-sm font-semibold"
           >
             <X aria-hidden size={18} />
             <span className="sr-only sm:not-sr-only">{t('backToLobby')}</span>
@@ -209,15 +215,21 @@ export function GameWorkspace({
               </Button>
             </div>
           )}
-          <Button
-            type="button"
-            onClick={onAddGame}
-            disabled={atLimit}
-            className={`${showDeposit ? '' : 'ms-auto'} h-9 bg-[var(--surface-2)] px-3 text-[var(--text)] hover:bg-[var(--surface-3)]`}
-          >
-            <Plus aria-hidden size={16} />
-            {t('addGame')}
-          </Button>
+          <div className={`flex shrink-0 items-center gap-1.5 ${showDeposit ? '' : 'ms-auto'}`}>
+            <FavoriteButton game={focused.launch.target.game} variant="tool" />
+            <FullscreenButton target={stage} title={focused.launch.target.game.title} />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onAddGame}
+              disabled={atLimit}
+              aria-label={t('addGame')}
+              className="add-game-button h-9 px-2.5 sm:px-3"
+            >
+              <Plus aria-hidden size={16} />
+              <span className="sr-only sm:not-sr-only">{t('addGame')}</span>
+            </Button>
+          </div>
         </div>
       )}
       {limitNotice && !browsing && (
@@ -239,34 +251,45 @@ export function GameWorkspace({
         />
       )}
       <div
+        ref={stage}
+        data-game-live-host=""
         aria-hidden={browsing || undefined}
-        className={browsing ? 'h-px w-px overflow-hidden' : 'relative min-h-0 flex-1'}
+        inert={browsing || undefined}
+        className={
+          browsing
+            ? 'game-live-parked pointer-events-none fixed top-0 left-0 h-dvh w-screen'
+            : 'relative min-h-0 flex-1 bg-[var(--bg)]'
+        }
       >
-        {panels.map((panel) => (
-              <div
-                key={panel.id}
-                hidden={panel.id !== focused.id}
-                className="absolute inset-0 flex flex-col"
-              >
-                <div className="shrink-0 px-3 py-2">
-                  <h2 id={panel.id === focused.id ? titleId : undefined} className="truncate text-sm font-bold">
-                    {panel.launch.target.game.title}
-                  </h2>
-                  <p className="truncate text-xs text-[var(--muted)]">
-                    {providerName(panel, t('independent'))} ·{' '}
-                    {panel.launch.target.mode === 'demo' ? t('demo') : t('real')}
-                  </p>
-                </div>
-                <GameFrame
-                  state={panel.launch}
-                  onRetry={() => onRetry(panel.id)}
-                  onFrameLoad={(attempt) => onFrameLoad(panel.id, attempt)}
-                  onLoadTimeout={(attempt) => onLoadTimeout(panel.id, attempt)}
-                  onSignIn={() => onSignIn(panel.id)}
-                  onBackToLobby={onCloseAll}
-                />
+        {panels.map((panel) => {
+          const parked = panel.id !== focused.id;
+          return (
+            <div
+              key={panel.id}
+              data-game-parked={parked ? '' : undefined}
+              inert={parked || undefined}
+              className={`absolute inset-0 flex flex-col${parked ? ' game-live-parked' : ''}`}
+            >
+              <div className="shrink-0 px-3 py-2">
+                <h2 id={panel.id === focused.id ? titleId : undefined} className="truncate text-sm font-bold">
+                  {panel.launch.target.game.title}
+                </h2>
+                <p className="flex min-w-0 items-center gap-1.5 text-xs text-[var(--muted)]">
+                  <span className="truncate">{providerName(panel, t('independent'))}</span>
+                  {panel.launch.target.mode === 'demo' && <span className="game-mode-chip">{t('demo')}</span>}
+                </p>
               </div>
-            ))}
+              <GameFrame
+                state={panel.launch}
+                onRetry={() => onRetry(panel.id)}
+                onFrameLoad={(attempt) => onFrameLoad(panel.id, attempt)}
+                onLoadTimeout={(attempt) => onLoadTimeout(panel.id, attempt)}
+                onSignIn={() => onSignIn(panel.id)}
+                onBackToLobby={onCloseAll}
+              />
+            </div>
+          );
+        })}
         {!browsing && (
           <DemoPrompt
             level={demoLevel}
@@ -276,7 +299,7 @@ export function GameWorkspace({
           />
         )}
       </div>
-      {!browsing && <GameInfo game={focused.launch.target.game} />}
+      {!browsing && <GameInfo compact game={focused.launch.target.game} />}
     </div>
   );
 }
@@ -305,8 +328,10 @@ function GameSwitcher({
         return (
           <div
             key={panel.id}
-            className={`flex h-12 shrink-0 items-center rounded-[var(--radius-pill)] border ${
-              selected ? 'border-[var(--accent)] bg-[var(--surface-2)]' : 'border-[var(--line)]'
+            className={`fade-enter flex h-12 shrink-0 items-center rounded-[var(--radius-pill)] border transition-[border-color,background-color,box-shadow] duration-[var(--dur-normal)] ${
+              selected
+                ? 'border-[var(--accent)] bg-[var(--accent-soft)] shadow-[inset_0_0_0_1px_var(--accent)]'
+                : 'border-[var(--line)] bg-[var(--surface)]'
             }`}
           >
             <button
@@ -314,7 +339,7 @@ function GameSwitcher({
               role="tab"
               aria-selected={selected}
               onClick={() => onFocus(panel.id)}
-              className="flex h-full min-w-0 items-center gap-2 px-2 text-start"
+              className="pressable flex h-full min-w-0 items-center gap-2 rounded-[var(--radius-pill)] px-2 text-start"
             >
               <span className="size-8 shrink-0 overflow-hidden rounded-full">
                 <GameThumbnail game={panel.launch.target.game} />
@@ -325,7 +350,8 @@ function GameSwitcher({
               type="button"
               aria-label={t('closeGame', { title })}
               onClick={() => onClose(panel.id)}
-              className="me-1 inline-grid size-8 items-center justify-center rounded-full hover:bg-[var(--surface-2)]"
+              data-close=""
+              className="window-control me-1 inline-grid size-8 items-center justify-center rounded-full"
             >
               <X aria-hidden size={14} />
             </button>
@@ -336,7 +362,7 @@ function GameSwitcher({
         type="button"
         onClick={onAdd}
         disabled={addDisabled}
-        className="inline-flex h-12 shrink-0 items-center gap-1 rounded-[var(--radius-pill)] border border-[var(--line)] px-3 text-sm font-semibold disabled:opacity-50"
+        className="add-game-button btn inline-flex h-12 shrink-0 items-center gap-1 rounded-[var(--radius-pill)] border border-dashed border-[var(--accent-line)] bg-[var(--accent-soft)] px-3 text-sm font-semibold text-[var(--accent-strong)] disabled:opacity-50"
       >
         <Plus aria-hidden size={16} />
         {t('addGame')}

@@ -1,3 +1,4 @@
+import { SportsHero } from '@/components/sports-hero';
 import { Sportsbook } from '@/components/sportsbook/sportsbook';
 import { translatedMetadata } from '@/i18n/page-metadata';
 
@@ -12,5 +13,10 @@ export default async function Page({
 }) {
   const params = await searchParams;
   const path = typeof params.path === 'string' ? params.path : undefined;
-  return <Sportsbook path={path} />;
+  return (
+    <div className="flex min-h-0 w-full flex-1 flex-col">
+      <SportsHero />
+      <Sportsbook path={path} />
+    </div>
+  );
 }

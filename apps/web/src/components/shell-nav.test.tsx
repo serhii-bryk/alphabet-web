@@ -48,6 +48,10 @@ describe('header and side menu', () => {
     expect(header).not.toContain('Color theme');
     expect(aside).toContain('href="/casino"');
     expect(aside).toContain('href="/live-casino"');
+    expect(aside).toContain('href="/favorites"');
+    expect(aside).toContain('Favorites');
+    expect(header).not.toContain('href="/favorites"');
+    expect(header).not.toContain('Favorites');
     expect(aside).toContain('Live Casino');
     expect(aside).toContain('href="/sports"');
     expect(aside).toContain('href="/promotions"');

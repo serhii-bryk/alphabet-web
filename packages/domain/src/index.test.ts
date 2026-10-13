@@ -35,6 +35,11 @@ function makePlatform(launchDemoGame: PlatformClient['launchDemoGame']): Platfor
     approveWithdrawal: vi.fn(),
     confirmWithdrawal: vi.fn(),
     rollbackWithdrawal: vi.fn(),
+    listFavorites: vi.fn(),
+    addFavorite: vi.fn(),
+    removeFavorite: vi.fn(),
+    lastPlayed: vi.fn(),
+    mostPlayed: vi.fn(),
   };
 }
 

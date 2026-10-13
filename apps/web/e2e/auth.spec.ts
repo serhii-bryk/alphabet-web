@@ -90,7 +90,7 @@ async function installAuthRoutes(page: Page) {
 }
 
 async function openCasino(page: Page) {
-  await page.goto('/en/casino');
+  await page.goto('/casino');
   await expect(page.getByRole('heading', { level: 1, name: 'Casino' })).toBeVisible();
 }
 

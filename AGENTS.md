@@ -23,6 +23,7 @@
 - CI must mock Platform and never call stage. Do not claim success without direct verification.
 - Done means typecheck, lint, relevant tests, runtime checks, and no remaining Blocker.
 - Ask before architecture, Platform-contract, database, auth/security, payment, major dependency, deployment, or production changes.
+- After the verification a task already requires, the orchestrator prepares the Git handoff in `.cursor/rules/git-handoff.mdc` and waits for approval of that specific action. Do not push, force-push, rebase, reset, cherry-pick, merge, or open a pull request unless explicitly asked.
 - `PROJECT_STATE.md` is the current-state source of truth. Update it at the end of every completed milestone and when an important architecture or integration decision changes. Never store secrets or personal test credentials there.
 
 <!-- BEGIN:turborepo-agent-rules -->

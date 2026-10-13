@@ -24,7 +24,7 @@ test('guest sportsbook opens one iframe and stays on that launch', async ({ page
     });
   });
 
-  await page.goto('/en/sports');
+  await page.goto('/sports');
   const frame = page.getByTitle('Sportsbook');
   await expect(frame).toBeVisible();
   await expect(page.locator('.sportsbook')).toBeVisible();

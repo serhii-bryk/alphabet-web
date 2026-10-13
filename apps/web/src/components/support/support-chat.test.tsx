@@ -157,7 +157,8 @@ describe('support chat ui', () => {
     await text('كيف أُودع؟');
     await click('كيف أُودع؟');
     await text('الإيداع من الصندوق.');
-    await text('فتح الإيداع');
+    await text('فتح تسجيل الدخول');
+    expect(document.body.textContent).not.toContain('فتح الإيداع');
   });
 
   it('keeps human support available when the assistant is down and when no contact is configured', async () => {

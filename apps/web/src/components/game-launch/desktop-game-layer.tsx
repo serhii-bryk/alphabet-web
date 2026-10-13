@@ -31,6 +31,7 @@ export function DesktopGameLayer({
   onLoadTimeout,
   onSignIn,
   onFocus,
+  browsing = false,
   onKeepOpen,
   onMinimize,
   onMaximize,
@@ -47,6 +48,7 @@ export function DesktopGameLayer({
   focusedId: string | null;
   limitNotice: boolean;
   demoLevel?: DemoPromptLevel;
+  browsing?: boolean;
   onCloseAll: () => void;
   onClosePanel: (id: string) => void;
   onRetry: (id: string) => void;
@@ -54,7 +56,7 @@ export function DesktopGameLayer({
   onLoadTimeout: (id: string, attempt: number) => void;
   onSignIn: (id: string) => void;
   onFocus: (id: string) => void;
-  onKeepOpen: () => void;
+  onKeepOpen: (id: string) => void;
   onMinimize: (id: string) => void;
   onMaximize: (id: string) => void;
   onRestore: (id: string) => void;
@@ -70,10 +72,13 @@ export function DesktopGameLayer({
   const focused = panels.find((panel) => panel.id === focusedId) ?? panels[0];
   const atLimit = panels.length >= MAX_OPEN_GAMES;
   const minimized = panels.filter((panel) => panel.presentation === 'minimized');
+  const switcherPanels = panels.filter((panel) => panel.presentation !== 'minimized');
+  const showSwitcher = browsing || switcherPanels.length > 1;
+  const pageMode = panels.some((panel) => panel.presentation === 'page');
   if (!focused) return null;
 
   return (
-    <div id="desktop-game-layer" data-desktop-game-layer="" className="desktop-game-layer">
+    <div id="desktop-game-layer" data-desktop-game-layer="" data-game-live-host="" className="desktop-game-layer">
       {panels.map((panel) => (
         <GameWindow
           key={panel.id}
@@ -81,7 +86,10 @@ export function DesktopGameLayer({
           focused={panel.id === focused.id}
           onFocus={() => onFocus(panel.id)}
           onClose={() => onClosePanel(panel.id)}
-          onKeepOpen={onKeepOpen}
+          browsing={browsing}
+          clearBottom={showSwitcher}
+          onKeepOpen={() => onKeepOpen(panel.id)}
+          onAddGame={onAddGame}
           onMinimize={() => onMinimize(panel.id)}
           onMaximize={() => onMaximize(panel.id)}
           onRestore={() => onRestore(panel.id)}
@@ -104,7 +112,7 @@ export function DesktopGameLayer({
       {limitNotice && (
         <p
           role="status"
-          className="pointer-events-auto absolute inset-x-3 bottom-20 z-[1000000] rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm shadow-[var(--shadow-1)]"
+          className="motion-enter pointer-events-auto absolute inset-x-3 bottom-20 z-[1000000] rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm shadow-[var(--shadow-2)]"
         >
           {t('gameLimit')}
           <button type="button" className="ms-3 font-semibold underline" onClick={onDismissLimit}>
@@ -113,22 +121,29 @@ export function DesktopGameLayer({
         </p>
       )}
       <div className="pointer-events-none absolute inset-x-3 bottom-3 z-[1000001] flex items-end gap-3">
-        {minimized.length > 0 && (
+        {showSwitcher && (
           <div
+            role="tablist"
             aria-label={t('openGames')}
-            className="pointer-events-auto flex min-w-0 flex-1 gap-2 overflow-x-auto rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-2 shadow-[var(--shadow-1)]"
+            data-open-games=""
+            className="pointer-events-auto flex min-w-0 flex-1 gap-2 overflow-x-auto rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-2 shadow-[var(--shadow-2)]"
           >
-            {minimized.map((panel) => {
+            {switcherPanels.map((panel) => {
               const title = panel.launch.target.game.title;
+              const main = panel.presentation === 'page';
               return (
                 <div
                   key={panel.id}
-                  className="flex h-12 shrink-0 items-center rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--bg)]"
+                  className={`fade-enter flex h-12 shrink-0 items-center rounded-[var(--radius-md)] border ${
+                    main ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-[var(--line)] bg-[var(--bg)]'
+                  }`}
                 >
                   <button
                     type="button"
+                    role="tab"
+                    aria-selected={main}
                     onClick={() => onFocus(panel.id)}
-                    className="flex h-full items-center gap-2 px-2"
+                    className="pressable flex h-full items-center gap-2 rounded-[var(--radius-md)] px-2"
                   >
                     <span className="size-8 overflow-hidden rounded-[var(--radius-sm)]">
                       <GameThumbnail game={panel.launch.target.game} />
@@ -139,7 +154,54 @@ export function DesktopGameLayer({
                     type="button"
                     aria-label={t('closeGame', { title })}
                     onClick={() => onClosePanel(panel.id)}
-                    className="me-1 inline-grid size-8 items-center justify-center rounded-[var(--radius-sm)] hover:bg-[var(--surface-2)]"
+                    data-close=""
+                    className="window-control me-1 inline-grid size-8 items-center justify-center rounded-[var(--radius-sm)]"
+                  >
+                    <X aria-hidden size={14} />
+                  </button>
+                </div>
+              );
+            })}
+            <button
+              type="button"
+              data-add-game=""
+              onClick={onAddGame}
+              disabled={atLimit}
+              className="add-game-button btn inline-flex h-12 shrink-0 items-center gap-1 rounded-[var(--radius-md)] border border-dashed border-[var(--accent-line)] bg-[var(--accent-soft)] px-3 text-sm font-semibold text-[var(--accent-strong)] disabled:opacity-50"
+            >
+              <Plus aria-hidden size={16} />
+              {t('addGame')}
+            </button>
+          </div>
+        )}
+        {minimized.length > 0 && (
+          <div
+            aria-label={t('openGames')}
+            className="motion-enter pointer-events-auto flex min-w-0 flex-1 gap-2 overflow-x-auto rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-2 shadow-[var(--shadow-2)]"
+          >
+            {minimized.map((panel) => {
+              const title = panel.launch.target.game.title;
+              return (
+                <div
+                  key={panel.id}
+                  className="fade-enter flex h-12 shrink-0 items-center rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--bg)] transition-[border-color,box-shadow] duration-[var(--dur-normal)] hover:border-[var(--accent-line)] hover:shadow-[var(--shadow-1)]"
+                >
+                  <button
+                    type="button"
+                    onClick={() => onFocus(panel.id)}
+                    className="pressable flex h-full items-center gap-2 rounded-[var(--radius-md)] px-2"
+                  >
+                    <span className="size-8 overflow-hidden rounded-[var(--radius-sm)]">
+                      <GameThumbnail game={panel.launch.target.game} />
+                    </span>
+                    <span className="max-w-40 truncate text-sm font-semibold">{title}</span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={t('closeGame', { title })}
+                    onClick={() => onClosePanel(panel.id)}
+                    data-close=""
+                    className="window-control me-1 inline-grid size-8 items-center justify-center rounded-[var(--radius-sm)]"
                   >
                     <X aria-hidden size={14} />
                   </button>
@@ -148,16 +210,18 @@ export function DesktopGameLayer({
             })}
           </div>
         )}
-        <button
-          type="button"
-          data-add-game=""
-          onClick={onAddGame}
-          disabled={atLimit}
-          className="pointer-events-auto ms-auto inline-flex h-12 shrink-0 items-center gap-2 rounded-[var(--radius-md)] bg-[var(--accent)] px-5 text-base font-black text-[var(--accent-contrast)] shadow-[var(--shadow-1)] transition hover:bg-[var(--accent-strong)] disabled:opacity-50"
-        >
-          <Plus aria-hidden size={20} />
-          {t('addGameProminent')}
-        </button>
+        {!pageMode && !showSwitcher && (
+          <button
+            type="button"
+            data-add-game=""
+            onClick={onAddGame}
+            disabled={atLimit}
+            className="add-game-button btn btn-primary pointer-events-auto ms-auto inline-flex h-12 shrink-0 items-center gap-2 rounded-[var(--radius-md)] px-5 text-base font-black disabled:opacity-50"
+          >
+            <Plus aria-hidden size={20} />
+            {t('addGameProminent')}
+          </button>
+        )}
       </div>
     </div>
   );

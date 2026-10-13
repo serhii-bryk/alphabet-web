@@ -1,8 +1,32 @@
 import { expect, test, type Locator, type Page, type Route } from '@playwright/test';
 
 const FAKE_GAME_URL = 'https://example.com/fake-game';
-const FAKE_GAME_HTML =
-  '<!doctype html><html><body><p id="fake-game">Fake game ready</p></body></html>';
+const FAKE_GAME_HTML = `<!doctype html><html><body>
+<p id="fake-game">Fake game ready</p>
+<p id="raf-count">0</p>
+<p id="interval-count">0</p>
+<p id="visibility-state">unknown</p>
+<script>
+  var raf = 0;
+  var ticks = 0;
+  var rafNode = document.getElementById('raf-count');
+  var tickNode = document.getElementById('interval-count');
+  var visibilityNode = document.getElementById('visibility-state');
+  function paintVisibility() { visibilityNode.textContent = document.visibilityState; }
+  paintVisibility();
+  document.addEventListener('visibilitychange', paintVisibility);
+  setInterval(function () {
+    ticks += 1;
+    tickNode.textContent = String(ticks);
+  }, 50);
+  function frame() {
+    raf += 1;
+    rafNode.textContent = String(raf);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body></html>`;
 const BOOK_DEMO = 'Play Book of Tests demo';
 const SECOND_DEMO = 'Play Second Test demo';
 
@@ -111,12 +135,73 @@ async function installLaunchRoutes(page: Page, options: RouteOptions = {}): Prom
 }
 
 async function openCasino(page: Page) {
-  await page.goto('/en/casino');
+  await page.goto('/casino');
   await expect(page.getByRole('heading', { level: 1, name: 'Casino' })).toBeVisible();
 }
 
 function demoFrame(page: Page, title: string) {
   return page.frameLocator(`iframe[title="${title} demo"]`);
+}
+
+function gameFrame(page: Page, title: string) {
+  return page.locator(`iframe[title="${title} demo"]`);
+}
+
+interface LiveSample {
+  raf: number;
+  interval: number;
+  visibility: string;
+}
+
+async function readLive(page: Page, title: string): Promise<LiveSample> {
+  const frame = demoFrame(page, title);
+  const [raf, interval, visibility] = await Promise.all([
+    frame.locator('#raf-count').innerText(),
+    frame.locator('#interval-count').innerText(),
+    frame.locator('#visibility-state').innerText(),
+  ]);
+  return { raf: Number(raf), interval: Number(interval), visibility };
+}
+
+async function frameSnapshot(page: Page, title: string) {
+  return gameFrame(page, title).evaluate((element) => {
+    const frame = element as HTMLIFrameElement;
+    if (!frame.dataset.liveInstance) frame.dataset.liveInstance = `${Date.now()}-${Math.random()}`;
+    const rect = frame.getBoundingClientRect();
+    const style = getComputedStyle(frame);
+    let display = style.display;
+    let visibility = style.visibility;
+    let opacity = style.opacity;
+    let current: Element | null = frame;
+    while (current) {
+      const ancestor = getComputedStyle(current);
+      if (ancestor.display === 'none') display = 'none';
+      if (ancestor.visibility === 'hidden' || ancestor.getPropertyValue('content-visibility') === 'hidden') {
+        visibility = 'hidden';
+      }
+      if (ancestor.opacity === '0') opacity = '0';
+      current = current.parentElement;
+    }
+    return {
+      instance: frame.dataset.liveInstance ?? '',
+      src: frame.getAttribute('src') ?? '',
+      display,
+      visibility,
+      opacity,
+      width: rect.width,
+      height: rect.height,
+      right: rect.right,
+      parked: Boolean(frame.closest('[data-game-parked], .game-live-parked')),
+    };
+  });
+}
+
+async function expectKeepsRunning(page: Page, title: string) {
+  const before = await readLive(page, title);
+  await expect
+    .poll(async () => (await readLive(page, title)).raf, { timeout: 2_000 })
+    .toBeGreaterThan(before.raf + 2);
+  return readLive(page, title);
 }
 
 async function iframeIsHitTarget(iframe: Locator) {
@@ -294,7 +379,7 @@ test.describe('demo game launch', () => {
 
   test('does not launch a live game when demo is unavailable', async ({ page }) => {
     const routes = await installLaunchRoutes(page);
-    await page.goto('/en/live-casino');
+    await page.goto('/live-casino');
     await expect(page.getByText('Demo unavailable')).toBeVisible();
     await page.getByRole('heading', { name: 'Test Blackjack' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -338,7 +423,7 @@ test('keeps two games mounted and does not relaunch the one that stays open', as
 test('shows demo prompts from short development thresholds and lets play continue', async ({ page }) => {
   await page.clock.install();
   await installLaunchRoutes(page);
-  await page.goto('/en/casino?demoSoftMs=4000&demoStrongMs=8000');
+  await page.goto('/casino?demoSoftMs=4000&demoStrongMs=8000');
   await expect(page.getByRole('heading', { level: 1, name: 'Casino' })).toBeVisible();
   await page.getByRole('button', { name: BOOK_DEMO }).click();
   await expect(demoFrame(page, 'Book of Tests').locator('#fake-game')).toHaveText('Fake game ready');
@@ -393,8 +478,158 @@ test.describe('mobile demo launch', () => {
 
     await page.getByRole('tab', { name: 'Book of Tests' }).click();
     await expect(demoFrame(page, 'Book of Tests').locator('#fake-game')).toHaveText('Fake game ready');
-    await expect(page.locator('iframe[title="Second Test demo"]')).toBeHidden();
+    const parked = await frameSnapshot(page, 'Second Test');
+    expect(parked.parked).toBe(true);
+    expect(parked.display).not.toBe('none');
+    expect(parked.visibility).not.toBe('hidden');
+    expect(parked.opacity).toBe('0');
+    expect(parked.width).toBeGreaterThan(100);
     await page.waitForTimeout(400);
+    expect(routes.posts()).toBe(2);
+    expect(routes.frameHits()).toBe(2);
+  });
+
+  test('keeps the background game running and does not relaunch it', async ({ page }) => {
+    const routes = await installLaunchRoutes(page);
+    await openCasino(page);
+    await page.getByRole('button', { name: BOOK_DEMO }).click();
+    await expect(demoFrame(page, 'Book of Tests').locator('#fake-game')).toHaveText('Fake game ready');
+    const book = await frameSnapshot(page, 'Book of Tests');
+    await expectKeepsRunning(page, 'Book of Tests');
+
+    await page.getByRole('button', { name: 'Add game' }).first().click();
+    const whileChoosing = await frameSnapshot(page, 'Book of Tests');
+    expect(whileChoosing.instance).toBe(book.instance);
+    expect(whileChoosing.src).toBe(book.src);
+    expect(whileChoosing.display).not.toBe('none');
+    expect(whileChoosing.opacity).toBe('0');
+    expect(whileChoosing.width).toBeGreaterThan(100);
+    await expectKeepsRunning(page, 'Book of Tests');
+
+    await page.getByRole('button', { name: SECOND_DEMO }).click();
+    await expect(demoFrame(page, 'Second Test').locator('#fake-game')).toHaveText('Fake game ready');
+    const bookBackground = await frameSnapshot(page, 'Book of Tests');
+    expect(bookBackground.instance).toBe(book.instance);
+    expect(bookBackground.src).toBe(book.src);
+    expect(bookBackground.parked).toBe(true);
+    expect(bookBackground.opacity).toBe('0');
+    expect(bookBackground.display).not.toBe('none');
+    const bookWhileHidden = await expectKeepsRunning(page, 'Book of Tests');
+    expect(routes.posts()).toBe(2);
+    expect(routes.frameHits()).toBe(2);
+
+    await page.getByRole('tab', { name: 'Book of Tests' }).click();
+    await expect(gameFrame(page, 'Book of Tests')).toBeVisible();
+    const bookRestored = await frameSnapshot(page, 'Book of Tests');
+    const secondParked = await frameSnapshot(page, 'Second Test');
+    expect(bookRestored.instance).toBe(book.instance);
+    expect(bookRestored.parked).toBe(false);
+    expect(secondParked.parked).toBe(true);
+    expect(secondParked.display).not.toBe('none');
+    const bookAfterSwitch = await readLive(page, 'Book of Tests');
+    expect(bookAfterSwitch.raf).toBeGreaterThan(bookWhileHidden.raf);
+    expect(bookAfterSwitch.visibility).toBe('visible');
+    await expectKeepsRunning(page, 'Second Test');
+    expect(routes.posts()).toBe(2);
+    expect(routes.frameHits()).toBe(2);
+
+    await page.getByRole('button', { name: 'Close Second Test' }).click();
+    await expect(gameFrame(page, 'Second Test')).toHaveCount(0);
+    const bookAfterClose = await frameSnapshot(page, 'Book of Tests');
+    expect(bookAfterClose.instance).toBe(book.instance);
+    expect(bookAfterClose.src).toBe(book.src);
+    await expectKeepsRunning(page, 'Book of Tests');
+    expect(routes.posts()).toBe(2);
+    expect(routes.frameHits()).toBe(2);
+  });
+});
+
+test.describe('desktop background games stay live', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test('keeps autospin running while another game is open, floating, or closed', async ({ page }) => {
+    const routes = await installLaunchRoutes(page);
+    await openCasino(page);
+    await page.getByRole('button', { name: BOOK_DEMO }).click();
+    await expect(demoFrame(page, 'Book of Tests').locator('#fake-game')).toHaveText('Fake game ready');
+    const book = await frameSnapshot(page, 'Book of Tests');
+    expect(book.parked).toBe(false);
+    await expectKeepsRunning(page, 'Book of Tests');
+
+    await page.getByRole('button', { name: 'Add game' }).click();
+    const whileChoosing = await frameSnapshot(page, 'Book of Tests');
+    expect(whileChoosing.instance).toBe(book.instance);
+    expect(whileChoosing.src).toBe(book.src);
+    expect(whileChoosing.parked).toBe(true);
+    expect(whileChoosing.display).not.toBe('none');
+    expect(whileChoosing.visibility).not.toBe('hidden');
+    expect(whileChoosing.opacity).toBe('0');
+    expect(whileChoosing.width).toBeGreaterThan(100);
+    await expectKeepsRunning(page, 'Book of Tests');
+    await expect(page.getByRole('button', { name: SECOND_DEMO })).toBeVisible();
+
+    await page.getByRole('button', { name: SECOND_DEMO }).click();
+    await expect(demoFrame(page, 'Second Test').locator('#fake-game')).toHaveText('Fake game ready');
+    await expect(gameFrame(page, 'Second Test')).toBeVisible();
+    const bookBackground = await frameSnapshot(page, 'Book of Tests');
+    const second = await frameSnapshot(page, 'Second Test');
+    expect(bookBackground.instance).toBe(book.instance);
+    expect(bookBackground.src).toBe(book.src);
+    expect(bookBackground.parked).toBe(true);
+    expect(bookBackground.opacity).toBe('0');
+    expect(bookBackground.display).not.toBe('none');
+    expect(second.parked).toBe(false);
+    const bookWhileHidden = await expectKeepsRunning(page, 'Book of Tests');
+    expect(routes.posts()).toBe(2);
+    expect(routes.frameHits()).toBe(2);
+
+    await page.getByRole('tab', { name: 'Book of Tests' }).click();
+    await expect(gameFrame(page, 'Book of Tests')).toBeVisible();
+    const bookRestored = await frameSnapshot(page, 'Book of Tests');
+    const secondBackground = await frameSnapshot(page, 'Second Test');
+    expect(bookRestored.instance).toBe(book.instance);
+    expect(bookRestored.src).toBe(book.src);
+    expect(bookRestored.parked).toBe(false);
+    expect(secondBackground.instance).toBe(second.instance);
+    expect(secondBackground.parked).toBe(true);
+    const bookAfterSwitch = await readLive(page, 'Book of Tests');
+    expect(bookAfterSwitch.raf).toBeGreaterThan(bookWhileHidden.raf);
+    expect(bookAfterSwitch.visibility).toBe('visible');
+    await expectKeepsRunning(page, 'Second Test');
+    expect(routes.posts()).toBe(2);
+    expect(routes.frameHits()).toBe(2);
+
+    await page.getByRole('tab', { name: 'Second Test' }).click();
+    await page.getByRole('button', { name: 'Pop out Second Test into a floating window' }).click();
+    await expect(gameFrame(page, 'Second Test')).toBeVisible();
+    const bookAfterPop = await frameSnapshot(page, 'Book of Tests');
+    const secondFloating = await frameSnapshot(page, 'Second Test');
+    expect(bookAfterPop.instance).toBe(book.instance);
+    expect(secondFloating.instance).toBe(second.instance);
+    expect(secondFloating.parked).toBe(false);
+    expect(routes.posts()).toBe(2);
+    expect(routes.frameHits()).toBe(2);
+
+    await page.getByRole('button', { name: 'Minimize Second Test' }).click();
+    const secondMinimized = await frameSnapshot(page, 'Second Test');
+    expect(secondMinimized.instance).toBe(second.instance);
+    expect(secondMinimized.parked).toBe(true);
+    expect(secondMinimized.display).not.toBe('none');
+    expect(secondMinimized.opacity).toBe('0');
+    await expectKeepsRunning(page, 'Second Test');
+    await expectKeepsRunning(page, 'Book of Tests');
+
+    await page.getByRole('button', { name: 'Second Test artwork Second Test' }).click();
+    const secondRestored = await frameSnapshot(page, 'Second Test');
+    expect(secondRestored.instance).toBe(second.instance);
+    expect(secondRestored.parked).toBe(false);
+
+    await page.getByRole('tablist', { name: 'Open games' }).getByRole('button', { name: 'Close Second Test' }).click();
+    await expect(gameFrame(page, 'Second Test')).toHaveCount(0);
+    const bookAfterClose = await frameSnapshot(page, 'Book of Tests');
+    expect(bookAfterClose.instance).toBe(book.instance);
+    expect(bookAfterClose.src).toBe(book.src);
+    await expectKeepsRunning(page, 'Book of Tests');
     expect(routes.posts()).toBe(2);
     expect(routes.frameHits()).toBe(2);
   });

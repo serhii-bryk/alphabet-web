@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('mobile registration signs the player into the casino', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/en/casino');
+  await page.goto('/casino');
 
   await page.getByRole('region', { name: 'AlphaBet welcome' }).getByRole('button', { name: 'Register' }).click();
   await expect(page).toHaveURL(/\/en\/casino$/);

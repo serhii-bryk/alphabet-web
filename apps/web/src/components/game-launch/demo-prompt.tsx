@@ -4,7 +4,6 @@ import type { DemoPromptLevel } from './demo-play';
 import { useTranslations } from 'next-intl';
 import { Button } from '../ui';
 
-const quietButton = 'bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-3)]';
 
 export function DemoPrompt({
   level,
@@ -38,10 +37,10 @@ export function DemoPrompt({
           <Button type="button" onClick={(event) => onRegister(event.currentTarget)}>
             {t('register')}
           </Button>
-          <Button type="button" className={quietButton} onClick={(event) => onSignIn(event.currentTarget)}>
+          <Button type="button" variant="secondary" onClick={(event) => onSignIn(event.currentTarget)}>
             {t('signIn')}
           </Button>
-          <Button type="button" className={quietButton} onClick={() => onDismiss(level)}>
+          <Button type="button" variant="secondary" onClick={() => onDismiss(level)}>
             {t('later')}
           </Button>
         </div>

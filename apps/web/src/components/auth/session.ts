@@ -15,6 +15,7 @@ import {
 
 export const sessionKey = ['session'] as const;
 export const accountKey = ['account'] as const;
+export const playerKey = ['player'] as const;
 export const profileKey = ['account', 'profile'] as const;
 export const balanceKey = ['account', 'balance'] as const;
 
@@ -58,6 +59,7 @@ export function useEndSession() {
     void client.cancelQueries({ queryKey: sessionKey }, { revert: false, silent: true });
     client.setQueryData<SessionResponse>(sessionKey, guestSession);
     client.removeQueries({ queryKey: accountKey });
+    client.removeQueries({ queryKey: playerKey });
   }, [client]);
 }
 
@@ -90,6 +92,7 @@ export function useBalance() {
 }
 
 export function applyAuthenticatedSession(client: QueryClient, session: AuthSession) {
+  client.removeQueries({ queryKey: playerKey });
   client.setQueryData<SessionResponse>(sessionKey, session);
   void client.invalidateQueries({ queryKey: accountKey });
 }

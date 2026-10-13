@@ -1,6 +1,6 @@
 import type { CatalogGame } from '@brand/contracts';
 import { describe, expect, it } from 'vitest';
-import { formatListedAt, gameFacts } from './game-facts';
+import { formatListedAt, gameFacts, gameTags } from './game-facts';
 
 const game: CatalogGame = {
   id: '42',
@@ -59,5 +59,30 @@ describe('gameFacts', () => {
     expect(ids).not.toContain('description');
     expect(formatListedAt('not-a-date', 'en')).toBeNull();
     expect(formatListedAt('2024-05-01T00:00:00.000Z', 'en')).toBeTruthy();
+  });
+});
+
+describe('gameTags', () => {
+  it('builds chips only from Platform values', () => {
+    expect(gameTags(game)).toEqual([
+      { id: 'rtp', value: '97%' },
+      { id: 'volatility', value: 'medium' },
+      { id: 'format', value: 'live' },
+      { id: 'category', value: 'Table Games' },
+    ]);
+  });
+
+  it('omits missing metadata and duplicate format categories', () => {
+    const sparse = {
+      ...game,
+      rtp: null,
+      volatility: ' ',
+      demoPlayEnabled: true,
+      categories: [{ id: '5', slug: 'live', name: 'Live Casino', parentId: null }],
+    };
+    expect(gameTags(sparse)).toEqual([
+      { id: 'format', value: 'live' },
+      { id: 'demo', value: 'available' },
+    ]);
   });
 });

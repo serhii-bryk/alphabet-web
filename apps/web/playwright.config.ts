@@ -35,7 +35,7 @@ export default defineConfig({
     },
     {
       command: 'pnpm exec next dev --hostname 127.0.0.1 --port 3100',
-      url: 'http://127.0.0.1:3100/en/casino',
+      url: 'http://127.0.0.1:3100/casino',
       reuseExistingServer: false,
       timeout: 120_000,
       env: webEnv(),

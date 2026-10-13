@@ -19,7 +19,7 @@ export interface Frame {
   height: number;
 }
 
-export type Presentation = 'page' | 'floating' | 'minimized' | 'maximized';
+export type Presentation = 'page' | 'background' | 'floating' | 'minimized' | 'maximized';
 
 export type ActiveLaunch = Exclude<GameLaunchState, { status: 'idle' }>;
 
@@ -37,7 +37,10 @@ export interface WorkspaceState {
   focusedId: string | null;
   nextZ: number;
   limitNotice: boolean;
-  /** Set only by Keep open or Add Game. A normal game click does not set this. */
+  /**
+   * Armed by Add Game or Pop out. Further games join the session instead of
+   * replacing it. This never changes a game's presentation by itself.
+   */
   multiGame: boolean;
 }
 
@@ -53,7 +56,8 @@ type PanelAction = Exclude<GameLaunchAction, { type: 'launch' | 'close' }>;
 
 export type WorkspaceAction =
   | { type: 'open'; target: GameLaunchTarget; attempt: number; frame?: Frame; presentation?: Presentation }
-  | { type: 'enterMultiGame' }
+  | { type: 'armMultiGame' }
+  | { type: 'popOut'; id: string }
   | { type: 'replace'; id: string; target: GameLaunchTarget; attempt: number }
   | { type: 'focus'; id: string }
   | { type: 'close'; id: string }
@@ -109,10 +113,34 @@ function withFocus(state: WorkspaceState, id: string, restoreMinimized: boolean)
   };
 }
 
-function floatPagePanels(panels: GamePanel[]) {
-  return panels.map((panel) =>
-    panel.presentation === 'page' ? { ...panel, presentation: 'floating' as const } : panel,
+function highest(panels: GamePanel[], presentation: Presentation) {
+  return panels.reduce<GamePanel | null>(
+    (best, panel) =>
+      panel.presentation === presentation && (!best || panel.z > best.z) ? panel : best,
+    null,
   );
+}
+
+/** Show one open game in the main area. Floating windows are left untouched. */
+function activateMain(state: WorkspaceState, id: string): WorkspaceState {
+  const panel = state.panels.find((item) => item.id === id);
+  if (!panel) return state;
+  if (panel.presentation !== 'page' && panel.presentation !== 'background') {
+    return withFocus(state, id, true);
+  }
+  if (panel.presentation === 'page' && state.focusedId === id) return state;
+  const z = state.nextZ;
+  return {
+    ...state,
+    focusedId: id,
+    nextZ: z + 1,
+    limitNotice: false,
+    panels: state.panels.map((item) => {
+      if (item.id === id) return { ...item, presentation: 'page' as const, z };
+      if (item.presentation === 'page') return { ...item, presentation: 'background' as const };
+      return item;
+    }),
+  };
 }
 
 function focusNext(panels: GamePanel[], closedId: string, focusedId: string | null) {
@@ -128,9 +156,9 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
   switch (action.type) {
     case 'open': {
       if (state.panels.some((panel) => panel.id === action.target.game.id)) {
-        return withFocus(state, action.target.game.id, true);
+        return activateMain(state, action.target.game.id);
       }
-      const presentation = action.presentation ?? (state.multiGame ? 'floating' : 'page');
+      const presentation = action.presentation ?? 'page';
       const panel: GamePanel = {
         id: action.target.game.id,
         launch: { status: 'launching', target: action.target, attempt: action.attempt },
@@ -139,7 +167,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
         restoreFrame: null,
         z: state.nextZ,
       };
-      if (panel.presentation === 'page') {
+      if (panel.presentation === 'page' && !state.multiGame && state.panels.length > 0) {
         return {
           panels: [panel],
           focusedId: panel.id,
@@ -152,19 +180,46 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
         return { ...state, limitNotice: true };
       }
       return {
-        panels: [...floatPagePanels(state.panels), panel],
+        panels: [
+          ...state.panels.map((item) =>
+            panel.presentation === 'page' && item.presentation === 'page'
+              ? { ...item, presentation: 'background' as const }
+              : item,
+          ),
+          panel,
+        ],
         focusedId: panel.id,
         nextZ: state.nextZ + 1,
         limitNotice: false,
-        multiGame: true,
+        multiGame: state.multiGame || state.panels.length > 0,
       };
     }
-    case 'enterMultiGame': {
-      if (state.multiGame && state.panels.every((panel) => panel.presentation !== 'page')) return state;
+    case 'armMultiGame':
+      return state.multiGame ? state : { ...state, multiGame: true };
+    case 'popOut': {
+      const target = state.panels.find((panel) => panel.id === action.id);
+      if (!target || (target.presentation !== 'page' && target.presentation !== 'background')) {
+        return state;
+      }
+      let panels = state.panels.map((panel) =>
+        panel.id === action.id
+          ? { ...panel, presentation: 'floating' as const, z: state.nextZ }
+          : panel,
+      );
+      const successor =
+        target.presentation === 'page' ? highest(panels, 'background') : null;
+      if (successor) {
+        panels = panels.map((panel) =>
+          panel.id === successor.id ? { ...panel, presentation: 'page' as const } : panel,
+        );
+      }
+      const page = panels.find((panel) => panel.presentation === 'page');
       return {
         ...state,
+        panels,
+        focusedId: page?.id ?? action.id,
+        nextZ: state.nextZ + 1,
         multiGame: true,
-        panels: floatPagePanels(state.panels),
       };
     }
     case 'replace': {
@@ -187,13 +242,23 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
       );
     }
     case 'focus':
-      return withFocus(state, action.id, true);
+      return activateMain(state, action.id);
     case 'close': {
-      const panels = state.panels.filter((panel) => panel.id !== action.id);
+      const closed = state.panels.find((panel) => panel.id === action.id);
+      let panels = state.panels.filter((panel) => panel.id !== action.id);
+      if (closed?.presentation === 'page') {
+        const successor = highest(panels, 'background');
+        if (successor) {
+          panels = panels.map((panel) =>
+            panel.id === successor.id ? { ...panel, presentation: 'page' as const } : panel,
+          );
+        }
+      }
+      const page = panels.find((panel) => panel.presentation === 'page');
       return {
         ...state,
         panels,
-        focusedId: focusNext(state.panels, action.id, state.focusedId),
+        focusedId: page?.id ?? focusNext(state.panels, action.id, state.focusedId),
         limitNotice: false,
         multiGame: panels.length === 0 ? false : state.multiGame,
       };

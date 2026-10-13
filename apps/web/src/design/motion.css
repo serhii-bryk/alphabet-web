@@ -1,8 +1,27 @@
 @keyframes drift { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-3px) } }
 @keyframes appear { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
 @keyframes pulse { 50% { opacity: .5 } }
-.motion-enter { animation: appear .32s ease both; }
+@keyframes ab-fade-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes ab-modal-in { from { opacity: 0; transform: translateY(10px) scale(.98) } to { opacity: 1; transform: none } }
+@keyframes ab-sheet-in { from { opacity: .6; transform: translateY(24px) } to { opacity: 1; transform: none } }
+@keyframes ab-drawer-in { from { transform: translateX(calc(-100% * var(--dir, 1))) } to { transform: none } }
+@keyframes ab-panel-in { from { opacity: 0; transform: translateX(calc(16px * var(--dir, 1))) } to { opacity: 1; transform: none } }
+@keyframes ab-window-in { from { opacity: 0; transform: translateZ(0) scale(.97) } to { opacity: 1; transform: translateZ(0) } }
+@keyframes ab-pop { 0% { transform: scale(1) } 40% { transform: scale(1.22) rotate(-8deg) } 100% { transform: scale(1) } }
+@keyframes ab-ring { 0% { box-shadow: 0 0 0 0 var(--accent-glow) } 100% { box-shadow: 0 0 0 14px transparent } }
+@keyframes ab-shimmer { to { transform: translateX(100%) } }
+@keyframes ab-loader-chase { to { stroke-dashoffset: -100 } }
+@keyframes ab-loader-core {
+  0%, 100% { transform: scale(.7) rotate(0deg); opacity: .6 }
+  50% { transform: scale(1) rotate(90deg); opacity: 1 }
+}
+@keyframes ab-loader-breathe { 50% { opacity: .45 } }
+@keyframes ab-dot { 0%, 80%, 100% { opacity: .25; transform: translateY(0) } 40% { opacity: 1; transform: translateY(-2px) } }
+
+.motion-enter { animation: appear var(--dur-slow) var(--ease-out) both; }
+.fade-enter { animation: ab-fade-in var(--dur-normal) var(--ease-out) both; }
 .motion-drift { animation: drift 3.5s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }

@@ -26,10 +26,15 @@ function target(id: string, mode: 'demo' | 'real' = 'demo'): GameLaunchTarget {
 }
 
 function launch(ids: string[]) {
-  const armed = workspaceReducer(initialWorkspaceState, { type: 'enterMultiGame' });
   return ids.reduce(
-    (state, id) => workspaceReducer(state, { type: 'open', target: target(id), attempt: Number(id) }),
-    armed,
+    (state, id) =>
+      workspaceReducer(state, {
+        type: 'open',
+        target: target(id),
+        attempt: Number(id),
+        presentation: 'floating',
+      }),
+    initialWorkspaceState,
   );
 }
 
@@ -56,7 +61,7 @@ describe('workspaceReducer', () => {
     expect(replaced.multiGame).toBe(false);
   });
 
-  it('keeps the same launch when a full game becomes a floating window', () => {
+  it('adds a game without popping the current one out, then pops out only on request', () => {
     const first = workspaceReducer(initialWorkspaceState, {
       type: 'open',
       target: target('1', 'demo'),
@@ -67,18 +72,48 @@ describe('workspaceReducer', () => {
       id: '1',
       action: { type: 'resolved', attempt: 1, launchUrl: 'https://games.example/a' },
     });
-    const floated = workspaceReducer(ready, { type: 'enterMultiGame' });
-    expect(floated.multiGame).toBe(true);
-    expect(panel(floated, '1').presentation).toBe('floating');
-    expect(panel(floated, '1').launch).toBe(panel(ready, '1').launch);
+    const armed = workspaceReducer(ready, { type: 'armMultiGame' });
+    expect(armed.multiGame).toBe(true);
+    expect(panel(armed, '1').presentation).toBe('page');
+    expect(panel(armed, '1').launch).toBe(panel(ready, '1').launch);
 
-    const both = workspaceReducer(floated, { type: 'open', target: target('2'), attempt: 2 });
-    expect(both.panels).toHaveLength(2);
+    const both = workspaceReducer(armed, { type: 'open', target: target('2'), attempt: 2 });
+    expect(both.panels.map((item) => item.id)).toEqual(['1', '2']);
+    expect(panel(both, '1').presentation).toBe('background');
     expect(panel(both, '1').launch).toBe(panel(ready, '1').launch);
-    expect(panel(both, '1').presentation).toBe('floating');
-    expect(panel(both, '2').presentation).toBe('floating');
-    expect(panel(both, '2').launch.status).toBe('launching');
+    expect(panel(both, '2').presentation).toBe('page');
     expect(both.focusedId).toBe('2');
+
+    const back = workspaceReducer(both, { type: 'focus', id: '1' });
+    expect(back.focusedId).toBe('1');
+    expect(panel(back, '1').presentation).toBe('page');
+    expect(panel(back, '1').launch).toBe(panel(ready, '1').launch);
+    expect(panel(back, '2').presentation).toBe('background');
+    expect(panel(back, '2').launch).toBe(panel(both, '2').launch);
+
+    const popped = workspaceReducer(back, { type: 'popOut', id: '1' });
+    expect(panel(popped, '1').presentation).toBe('floating');
+    expect(panel(popped, '1').launch).toBe(panel(ready, '1').launch);
+    expect(panel(popped, '2').presentation).toBe('page');
+    expect(panel(popped, '2').launch).toBe(panel(both, '2').launch);
+    expect(popped.focusedId).toBe('2');
+  });
+
+  it('promotes a background game when the main one closes, without relaunching it', () => {
+    const armed = workspaceReducer(
+      workspaceReducer(initialWorkspaceState, { type: 'open', target: target('1'), attempt: 1 }),
+      { type: 'armMultiGame' },
+    );
+    const ready = workspaceReducer(armed, {
+      type: 'panel',
+      id: '1',
+      action: { type: 'resolved', attempt: 1, launchUrl: 'https://games.example/a' },
+    });
+    const both = workspaceReducer(ready, { type: 'open', target: target('2'), attempt: 2 });
+    const closed = workspaceReducer(both, { type: 'close', id: '2' });
+    expect(closed.panels.map((item) => item.id)).toEqual(['1']);
+    expect(panel(closed, '1').presentation).toBe('page');
+    expect(panel(closed, '1').launch).toBe(panel(ready, '1').launch);
   });
 
   it('opens a second game without replacing the first launch', () => {

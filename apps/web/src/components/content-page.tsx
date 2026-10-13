@@ -27,9 +27,9 @@ export async function ContentPage({
   return (
     <article className="mx-auto max-w-3xl py-2 sm:py-6">
       {banner ? (
-        <header className="relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] px-5 py-6 sm:px-7 sm:py-8">
-          <BrandBanner variant={banner} sizes="(min-width: 768px) 768px, 100vw" />
-          <div className="relative">{heading}</div>
+        <header className="page-hero relative flex min-h-[200px] items-end overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] px-5 py-6 sm:min-h-[240px] sm:px-7 sm:py-8">
+          <BrandBanner variant={banner} scrim="stage" sizes="(min-width: 768px) 768px, 100vw" />
+          <div className="banner-copy relative">{heading}</div>
         </header>
       ) : (
         heading

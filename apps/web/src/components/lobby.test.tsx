@@ -27,7 +27,7 @@ vi.mock('@/components/auth/session', async (importOriginal) => {
 });
 
 import { GameThumbnail } from './game-card';
-import { CatalogErrorState, LobbyLoading, LobbyView } from './lobby';
+import { CatalogErrorState, catalogPageItems, LobbyLoading, LobbyView } from './lobby';
 
 function renderLobby(node: ReactNode) {
   return renderToStaticMarkup(
@@ -100,6 +100,7 @@ describe('catalog lobby UI', () => {
     );
 
     expect(html).toContain('Live Casino');
+    expect(html).not.toContain('data-product-worlds');
     expect(html).toContain('Results for “table”');
     expect(html).toContain('src="https://cdn.example/live-table.png"');
     expect(html).toContain('alt="Live Table game thumbnail"');
@@ -118,12 +119,23 @@ describe('catalog lobby UI', () => {
       'href="/live-casino?search=table&amp;category=tables"',
     );
     expect(html).toContain(
-      'href="/live-casino?search=table&amp;category=tables&amp;provider=studio" class="shrink-0 rounded-[var(--radius-pill)]',
+      'href="/live-casino?search=table&amp;category=tables&amp;provider=studio"',
     );
+    expect(html).toContain('class="chip-link shrink-0 rounded-[var(--radius-pill)]');
     expect(html).toContain(
       'href="/live-casino?page=3&amp;search=table&amp;category=tables&amp;provider=studio"',
     );
     expect(html).toContain('Page 2 of 3');
+    expect(html).toContain('Showing 21–40 of 60 games');
+    expect(html).toContain('>Previous<');
+    expect(html).toContain('>Next<');
+    expect(html).toContain('aria-current="page"');
+  });
+
+  it('keeps a short page window with the current page marked', () => {
+    expect(catalogPageItems(1, 18)).toEqual([1, 2, 3, 4, 5, 'ellipsis', 18]);
+    expect(catalogPageItems(10, 18)).toEqual([1, 'ellipsis', 8, 9, 10, 11, 12, 'ellipsis', 18]);
+    expect(catalogPageItems(2, 3)).toEqual([1, 2, 3]);
   });
 
   it('renders deterministic artwork for absent and unsafe thumbnails', () => {
@@ -244,5 +256,32 @@ describe('catalog lobby UI', () => {
     expect(html).toContain('id="promotions"');
     expect(html).toContain('href="/live-casino#games"');
     expect(html).toContain('id="game-floor"');
+    expect(html).toContain('id="live-discovery"');
+    expect(html).toContain('id="journal"');
+    expect(html).toContain('class="provider-tile');
+    expect(html).toContain('href="/casino"');
+    expect(html).toContain('href="/live-casino"');
+    expect(html).toContain('href="/sports"');
+
+    const worlds = html.indexOf('data-product-worlds');
+    const gamesAt = html.indexOf('id="games"');
+    const live = html.indexOf('id="live-discovery"');
+    const providers = html.indexOf('id="providers"');
+    const promotions = html.indexOf('id="promotions"');
+    const journal = html.indexOf('id="journal"');
+    expect(worlds).toBeGreaterThan(-1);
+    expect(worlds).toBeLessThan(gamesAt);
+    expect(gamesAt).toBeLessThan(live);
+    expect(live).toBeLessThan(providers);
+    expect(providers).toBeLessThan(promotions);
+    expect(promotions).toBeLessThan(journal);
+
+    const worldMarkup = html.slice(worlds, html.indexOf('</section>', worlds));
+    expect(worldMarkup).toContain('product-world-slots');
+    expect(worldMarkup).toContain('product-world-live');
+    expect(worldMarkup).toContain('product-world-sports');
+    expect(worldMarkup).not.toContain('Promotions');
+    expect(worldMarkup).not.toContain('Providers');
+    expect(worldMarkup.match(/product-world-cta/g)).toHaveLength(3);
   });
 });

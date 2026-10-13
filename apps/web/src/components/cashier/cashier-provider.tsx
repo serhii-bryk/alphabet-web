@@ -5,7 +5,6 @@ import type { PaymentStatusResponse } from '@brand/contracts';
 import { WalletCards } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { fetchPaymentStatus } from '@/data/payments-browser';
-import { useAuthDialog } from '../auth/auth-provider';
 import { accountKey, useSession } from '../auth/session';
 import { Button } from '../ui';
 import { CashierDialog, type CashierTab } from './cashier-dialog';
@@ -121,20 +120,17 @@ export function DepositButton({
   onNavigate?: () => void;
 }) {
   const { status } = useSession();
-  const { openLogin } = useAuthDialog();
   const { openCashier } = useCashier();
   const t = useTranslations('shell');
-  const open = (currentTarget: HTMLElement) => {
+  // Guests and the pre-hydration render never see Deposit, so it cannot flash in and out.
+  if (status !== 'authenticated') return null;
+  const open = () => {
     onNavigate?.();
-    if (status === 'guest') {
-      openLogin(currentTarget);
-      return;
-    }
-    if (status === 'authenticated') openCashier('deposit');
+    openCashier('deposit');
   };
   if (appearance === 'header') {
     return (
-      <Button type="button" disabled={status === 'pending'} onClick={(event) => open(event.currentTarget)}>
+      <Button type="button" className="fade-enter" onClick={open}>
         <WalletCards size={16} />
         {t('deposit')}
       </Button>
@@ -143,9 +139,9 @@ export function DepositButton({
   return (
     <button
       type="button"
-      disabled={status === 'pending'}
-      onClick={(event) => open(event.currentTarget)}
-      className="flex h-11 w-full items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-semibold text-[var(--muted)] hover:bg-[var(--surface-2)] disabled:opacity-50"
+      onClick={open}
+      aria-label={compact ? t('deposit') : undefined}
+      className="nav-item flex h-11 w-full items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-semibold"
     >
       <WalletCards size={19} />
       {!compact && t('deposit')}

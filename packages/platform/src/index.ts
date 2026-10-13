@@ -30,6 +30,15 @@ export const platformCategorySchema = z.object({
   sort_order: z.number(),
 });
 
+const aggregateCountSchema = z.preprocess((value) => {
+  if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) return value;
+  if (typeof value === 'string' && /^(?:0|[1-9]\d{0,15})$/.test(value)) {
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) ? parsed : value;
+  }
+  return value;
+}, z.number().int().nonnegative());
+
 const platformGameCategorySchema = z.object({
   id: z.number().int(),
   slug: z.string(),
@@ -57,6 +66,18 @@ export const platformGameSchema = z.object({
   updated_at: z.string().nullable(),
   provider: platformProviderSchema.nullable(),
   categories: z.array(platformGameCategorySchema),
+  played: aggregateCountSchema.optional(),
+  rounds: aggregateCountSchema.optional(),
+  last_played: z.string().nullable().optional(),
+});
+
+const platformLastPlayedGameSchema = platformGameSchema.extend({
+  played: aggregateCountSchema,
+  last_played: z.string().nullable(),
+});
+
+const platformMostPlayedGameSchema = platformLastPlayedGameSchema.extend({
+  rounds: aggregateCountSchema,
 });
 
 const paginatorLinkSchema = z.object({
@@ -65,21 +86,37 @@ const paginatorLinkSchema = z.object({
   active: z.boolean(),
 });
 
-export const platformGamesPageSchema = z.object({
-  current_page: z.number().int().positive(),
-  data: z.array(platformGameSchema),
-  first_page_url: z.string(),
-  from: z.number().int().nullable(),
-  last_page: z.number().int().nonnegative(),
-  last_page_url: z.string(),
-  links: z.array(paginatorLinkSchema),
-  next_page_url: z.string().nullable(),
-  path: z.string(),
-  per_page: z.number().int().positive(),
-  prev_page_url: z.string().nullable(),
-  to: z.number().int().nullable(),
-  total: z.number().int().nonnegative(),
+function platformPageSchema<Item extends z.ZodType>(item: Item) {
+  return z.object({
+    current_page: z.number().int().positive(),
+    data: z.array(item),
+    first_page_url: z.string(),
+    from: z.number().int().nullable(),
+    last_page: z.number().int().nonnegative(),
+    last_page_url: z.string(),
+    links: z.array(paginatorLinkSchema),
+    next_page_url: z.string().nullable(),
+    path: z.string(),
+    per_page: z.number().int().positive(),
+    prev_page_url: z.string().nullable(),
+    to: z.number().int().nullable(),
+    total: z.number().int().nonnegative(),
+  });
+}
+
+export const platformGamesPageSchema = platformPageSchema(platformGameSchema);
+export const platformFavoritesSchema = z.object({
+  count: z.number().int().nonnegative(),
+  items: z.array(platformGameSchema),
 });
+export const platformFavoriteAddedSchema = z.object({
+  game_id: z.number().int().positive(),
+});
+export const platformFavoriteRemovedSchema = z.object({
+  removed_game_id: z.number().int().positive(),
+});
+export const platformLastPlayedPageSchema = platformPageSchema(platformLastPlayedGameSchema);
+export const platformMostPlayedPageSchema = platformPageSchema(platformMostPlayedGameSchema);
 
 export const platformProvidersSchema = z.array(platformProviderSchema);
 export const platformCategoriesSchema = z.array(platformCategorySchema);
@@ -106,8 +143,26 @@ export type PlatformGame = z.infer<typeof platformGameSchema>;
 export type PlatformGameLaunch = z.infer<typeof platformGameLaunchSchema>;
 export type PlatformSportsLaunch = z.infer<typeof platformSportsLaunchSchema>;
 export type PlatformGamesPage = z.infer<typeof platformGamesPageSchema>;
+export type PlatformFavorites = z.infer<typeof platformFavoritesSchema>;
+export type PlatformFavoriteAdded = z.infer<typeof platformFavoriteAddedSchema>;
+export type PlatformFavoriteRemoved = z.infer<typeof platformFavoriteRemovedSchema>;
+export type PlatformLastPlayedPage = z.infer<typeof platformLastPlayedPageSchema>;
+export type PlatformMostPlayedPage = z.infer<typeof platformMostPlayedPageSchema>;
 export type PlatformProvider = z.infer<typeof platformProviderSchema>;
 export type PlatformCategory = z.infer<typeof platformCategorySchema>;
+
+export interface PlatformPlayedFilters {
+  page?: number;
+  limit?: number;
+  order?: 'asc' | 'desc';
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface PlatformMostPlayedFilters extends PlatformPlayedFilters {
+  played?: number;
+  rounds?: number;
+}
 
 export interface PlatformGameFilters {
   page?: number;
@@ -322,6 +377,19 @@ export interface PlatformClient {
   approveWithdrawal(hash: string): Promise<PlatformWithdrawalAction>;
   confirmWithdrawal(hash: string): Promise<PlatformWithdrawalAction>;
   rollbackWithdrawal(hash: string): Promise<PlatformWithdrawalAction>;
+  listFavorites(playerId: number, accessToken: string): Promise<PlatformFavorites>;
+  addFavorite(playerId: number, accessToken: string, gameId: number): Promise<PlatformFavoriteAdded>;
+  removeFavorite(playerId: number, accessToken: string, gameId: number): Promise<PlatformFavoriteRemoved>;
+  lastPlayed(
+    playerId: number,
+    accessToken: string,
+    filters?: PlatformPlayedFilters,
+  ): Promise<PlatformLastPlayedPage>;
+  mostPlayed(
+    playerId: number,
+    accessToken: string,
+    filters?: PlatformMostPlayedFilters,
+  ): Promise<PlatformMostPlayedPage>;
 }
 
 export class PlatformClientError extends Error {
@@ -377,7 +445,7 @@ export function createPlatformClient(options: CreatePlatformClientOptions): Plat
   const baseOrigin = new URL(baseUrl).origin;
 
   async function request<T>(
-    method: 'GET' | 'POST',
+    method: 'GET' | 'POST' | 'DELETE',
     path: string,
     schema: z.ZodType<T>,
     requestOptions: { query?: URLSearchParams; json?: unknown; accessToken?: string } = {},
@@ -612,6 +680,47 @@ export function createPlatformClient(options: CreatePlatformClientOptions): Plat
         json: { hash: requireWithdrawalHash(hash) },
       });
     },
+    async listFavorites(playerId, accessToken) {
+      return request('GET', playerCollectionPath(playerId, 'favorites'), platformFavoritesSchema, {
+        accessToken: requireAccessToken(accessToken),
+      });
+    },
+    async addFavorite(playerId, accessToken, gameId) {
+      return request('POST', playerCollectionPath(playerId, 'favorites'), platformFavoriteAddedSchema, {
+        accessToken: requireAccessToken(accessToken),
+        json: { game_id: requireFavoriteGameId(gameId) },
+      });
+    },
+    async removeFavorite(playerId, accessToken, gameId) {
+      return request(
+        'DELETE',
+        `${playerCollectionPath(playerId, 'favorites')}/${requireFavoriteGameId(gameId)}`,
+        platformFavoriteRemovedSchema,
+        { accessToken: requireAccessToken(accessToken) },
+      );
+    },
+    async lastPlayed(playerId, accessToken, filters = {}) {
+      return request(
+        'GET',
+        playerCollectionPath(playerId, 'games/last-played'),
+        platformLastPlayedPageSchema,
+        {
+          accessToken: requireAccessToken(accessToken),
+          query: playedQuery(filters),
+        },
+      );
+    },
+    async mostPlayed(playerId, accessToken, filters = {}) {
+      return request(
+        'GET',
+        playerCollectionPath(playerId, 'games/most-played'),
+        platformMostPlayedPageSchema,
+        {
+          accessToken: requireAccessToken(accessToken),
+          query: playedQuery(filters),
+        },
+      );
+    },
   };
 
   async function launchGame(
@@ -629,14 +738,41 @@ export function createPlatformClient(options: CreatePlatformClientOptions): Plat
     return launch;
   }
 
+  function requirePlayerId(playerId: number): number {
+    if (!Number.isSafeInteger(playerId) || playerId <= 0) {
+      throw new PlatformClientError('request_failed');
+    }
+    return playerId;
+  }
+
+  function requireFavoriteGameId(gameId: number): number {
+    if (!Number.isSafeInteger(gameId) || gameId <= 0) {
+      throw new PlatformClientError('request_failed');
+    }
+    return gameId;
+  }
+
   function playerActionPath(
     playerId: number,
     action: 'refresh' | 'logout' | 'profile' | 'balance' | 'activateEmail',
   ): string {
-    if (!Number.isSafeInteger(playerId) || playerId <= 0) {
-      throw new PlatformClientError('request_failed');
-    }
-    return `/player/${playerId}/${action}`;
+    return `/player/${requirePlayerId(playerId)}/${action}`;
+  }
+
+  function playerCollectionPath(playerId: number, suffix: 'favorites' | 'games/last-played' | 'games/most-played'): string {
+    return `/player/${requirePlayerId(playerId)}/${suffix}`;
+  }
+
+  function playedQuery(filters: PlatformMostPlayedFilters): URLSearchParams {
+    const query = new URLSearchParams();
+    if (filters.page !== undefined) query.set('page', String(filters.page));
+    if (filters.limit !== undefined) query.set('limit', String(filters.limit));
+    if (filters.order !== undefined) query.set('order', filters.order);
+    if (filters.startDate !== undefined) query.set('startDate', filters.startDate);
+    if (filters.endDate !== undefined) query.set('endDate', filters.endDate);
+    if (filters.played !== undefined) query.set('played', String(filters.played));
+    if (filters.rounds !== undefined) query.set('rounds', String(filters.rounds));
+    return query;
   }
 
   function requireAccessToken(accessToken: string): string {

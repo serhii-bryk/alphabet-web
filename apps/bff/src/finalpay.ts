@@ -18,8 +18,8 @@ export function createFinalpayClient(
       const transRef = `${config.transactionPrefix}${input.paymentId}`;
       const customerRef = `${config.userPrefix}${input.playerId}`;
       const callbackUrl = `${config.callbackBaseUrl}/payments/callback/${input.paymentId}`;
-      const successUrl = browserReturnUrl(config.webOrigin, input.locale, input.direction, 'success', input.paymentId);
-      const cancelUrl = browserReturnUrl(config.webOrigin, input.locale, input.direction, 'cancelled', input.paymentId);
+      const successUrl = browserReturnUrl(config.webOrigin, input.direction, 'success', input.paymentId);
+      const cancelUrl = browserReturnUrl(config.webOrigin, input.direction, 'cancelled', input.paymentId);
       const amountString = input.amount === undefined ? '' : formatPaymentAmount(input.amount);
       const checksum = sha256Hex(
         callbackUrl +
@@ -122,12 +122,11 @@ function customerBody(
 
 function browserReturnUrl(
   webOrigin: string,
-  locale: 'en' | 'ar',
   direction: 'deposit' | 'withdraw',
   result: 'success' | 'cancelled' | 'failed',
   paymentId: string,
 ): string {
-  const url = new URL(`/${locale}/casino`, webOrigin);
+  const url = new URL('/casino', webOrigin);
   url.searchParams.set('cashier', direction);
   url.searchParams.set('result', result);
   url.searchParams.set('paymentId', paymentId);

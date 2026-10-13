@@ -100,9 +100,16 @@ describe('lobby hero', () => {
       expect(buttonOpening(html, label)).toContain('disabled');
     }
     expect(html).toContain('href="/casino"');
+    expect(html).toContain('href="/live-casino"');
     expect(html).toContain('href="/sports"');
-    expect(html).toContain('aria-label="Casino and sports"');
+    expect(html).toContain('data-product-worlds');
+    expect(html).toContain('aria-label="Casino, live casino, and sportsbook"');
+    expect(html).toContain('>Casino<');
     expect(html).toContain('>Live Casino<');
+    expect(html).toContain('>Sportsbook<');
+    expect(html).toContain('Spin the house');
+    expect(html).toContain('Take a seat');
+    expect(html).toContain('Read the board');
   });
 
   it('hides signup controls for an authenticated player', () => {

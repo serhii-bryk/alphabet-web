@@ -1,12 +1,13 @@
 import { fileURLToPath } from 'node:url';
 import type { GameLaunchErrorCode } from '@brand/contracts';
-import type { AccountUseCases, AuthUseCases, CatalogUseCases, GameLaunchUseCases, PaymentIntentStore, PaymentUseCases, RefreshIfNeededResult, RegistrationUseCases, SportsLaunchUseCases } from '@brand/domain';
+import type { AccountUseCases, AuthUseCases, CatalogUseCases, GameLaunchUseCases, PaymentIntentStore, PaymentUseCases, PersonalizationUseCases, RefreshIfNeededResult, RegistrationUseCases, SportsLaunchUseCases } from '@brand/domain';
 import {
   createAccountUseCases,
   createAuthUseCases,
   createCatalogUseCases,
   createGameLaunchUseCases,
   createPaymentUseCases,
+  createPersonalizationUseCases,
   createRegistrationUseCases,
   createSportsLaunchUseCases,
   GameLaunchError,
@@ -17,6 +18,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { z } from 'zod';
 import { isAccountPath, registerAccountRoutes } from './account-routes.js';
+import { isPersonalizationPath, registerPersonalizationRoutes } from './personalization-routes.js';
 import { applyResolvedSession, isAuthPath, registerAuthRoutes, resolvePlayerSession } from './auth-routes.js';
 import { createFinalpayClient } from './finalpay.js';
 import { createFilePaymentIntentStore } from './payment-intents.js';
@@ -68,6 +70,9 @@ const gameSchema = z.object({
   volatility: z.string().nullable(),
   gameType: z.string().nullable(),
   listedAt: z.string().nullable(),
+  played: z.number().int().nonnegative().optional(),
+  rounds: z.number().int().nonnegative().optional(),
+  lastPlayed: z.string().nullable().optional(),
 });
 
 const paginationSchema = z.object({
@@ -303,6 +308,10 @@ export function createApp(options: CreateAppOptions = {}) {
   registerSportsRoutes(app, { ...sessionDependencies, getSports: () => sportsLaunch, inflight });
   registerAuthRoutes(app, sessionDependencies);
   registerAccountRoutes(app, { ...sessionDependencies, getAccount, inflight });
+  let personalization: PersonalizationUseCases | undefined;
+  const getPersonalization = () =>
+    (personalization ??= createPersonalizationUseCases(getPlatform()));
+  registerPersonalizationRoutes(app, { ...sessionDependencies, getPersonalization, inflight });
   const paymentsConfig = readPaymentsConfig(env);
   let payments: PaymentUseCases | undefined;
   const getPayments = () => {
@@ -378,6 +387,17 @@ export function createApp(options: CreateAppOptions = {}) {
       return new Response(
         JSON.stringify({
           error: { code: 'provider_unavailable', message: 'Payments are temporarily unavailable' },
+        }),
+        {
+          status: 502,
+          headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+        },
+      );
+    }
+    if (isPersonalizationPath(c.req.path)) {
+      return new Response(
+        JSON.stringify({
+          error: { code: 'personalization_unavailable', message: 'Personalization is unavailable' },
         }),
         {
           status: 502,

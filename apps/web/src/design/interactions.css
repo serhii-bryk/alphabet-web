@@ -1,0 +1,437 @@
+:root, [dir='ltr'] { --dir: 1; }
+[dir='rtl'] { --dir: -1; }
+
+@layer components {
+  /* Buttons */
+  .btn {
+    transition:
+      transform var(--dur-fast) var(--ease-out),
+      background-color var(--dur-normal) var(--ease-out),
+      border-color var(--dur-normal) var(--ease-out),
+      box-shadow var(--dur-normal) var(--ease-out),
+      color var(--dur-normal) var(--ease-out),
+      opacity var(--dur-normal) var(--ease-out);
+  }
+  .btn:not(:disabled):active { transform: scale(var(--press-scale)); transition-duration: 60ms; }
+  .btn:disabled { cursor: not-allowed; }
+  .btn-primary {
+    background-color: var(--accent);
+    background-image: linear-gradient(180deg, rgb(255 255 255 / .16), rgb(255 255 255 / 0) 62%);
+    color: var(--accent-contrast);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .18), 0 1px 2px rgb(0 0 0 / .12);
+  }
+  .btn-secondary {
+    background-color: var(--surface-2);
+    color: var(--text);
+  }
+  @media (hover: hover) {
+    .btn:not(:disabled):hover { transform: translateY(var(--lift-sm)); }
+    .btn:not(:disabled):active { transform: scale(var(--press-scale)); }
+    .btn-primary:not(:disabled):hover {
+      background-color: var(--accent-strong);
+      box-shadow: inset 0 1px 0 rgb(255 255 255 / .18), var(--shadow-accent);
+    }
+    .btn-secondary:not(:disabled):hover { background-color: var(--surface-3); }
+  }
+
+  /* Generic pressable surfaces: icon buttons, chips, list rows */
+  .pressable {
+    transition:
+      transform var(--dur-fast) var(--ease-out),
+      background-color var(--dur-normal) var(--ease-out),
+      border-color var(--dur-normal) var(--ease-out),
+      box-shadow var(--dur-normal) var(--ease-out),
+      color var(--dur-normal) var(--ease-out);
+  }
+  .pressable:not(:disabled):active { transform: scale(var(--press-scale)); transition-duration: 60ms; }
+  @media (hover: hover) {
+    .pressable-lift:not(:disabled):hover { transform: translateY(var(--lift-sm)); box-shadow: var(--shadow-1); }
+    .pressable-lift:not(:disabled):active { transform: scale(var(--press-scale)); }
+  }
+
+  /* Sidebar and drawer navigation */
+  .nav-item {
+    position: relative;
+    color: var(--muted);
+    transition: background-color var(--dur-normal) var(--ease-out), color var(--dur-normal) var(--ease-out);
+  }
+  .nav-item::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 0;
+    top: 22%;
+    bottom: 22%;
+    width: 3px;
+    border-radius: var(--radius-pill);
+    background: var(--accent);
+    transform: scaleY(0);
+    transition: transform var(--dur-normal) var(--ease-spring);
+  }
+  .nav-item svg { transition: transform var(--dur-normal) var(--ease-out), color var(--dur-normal) var(--ease-out); }
+  .nav-item[aria-current='page'] { background: var(--accent-soft); color: var(--text); }
+  .nav-item[aria-current='page']::before { transform: scaleY(1); }
+  .nav-item[aria-current='page'] svg { color: var(--accent); }
+  .nav-item:active { background: var(--surface-3); }
+  @media (hover: hover) {
+    .nav-item:not([aria-current='page']):hover { background: var(--surface-2); color: var(--text); }
+    .nav-item:hover svg { transform: scale(1.08); }
+  }
+
+  .bottom-nav-item { position: relative; transition: color var(--dur-normal) var(--ease-out); }
+  .bottom-nav-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    inset-inline: 30%;
+    height: 2px;
+    border-radius: 0 0 var(--radius-pill) var(--radius-pill);
+    background: var(--accent);
+    transform: scaleX(0);
+    transition: transform var(--dur-normal) var(--ease-spring);
+  }
+  .bottom-nav-item[aria-current='page']::before { transform: scaleX(1); }
+  .bottom-nav-item svg { transition: transform var(--dur-fast) var(--ease-out); }
+  .bottom-nav-item:active svg { transform: scale(.88); }
+
+  /* Casino / Sports product switch with a sliding indicator */
+  .product-nav { position: relative; isolation: isolate; }
+  .product-nav-indicator {
+    position: absolute;
+    z-index: -1;
+    top: .25rem;
+    bottom: .25rem;
+    inset-inline-start: .25rem;
+    width: calc(50% - .375rem);
+    border-radius: var(--radius-pill);
+    background: var(--text);
+    box-shadow: 0 2px 8px rgb(0 0 0 / .18);
+    transform: translateX(calc(var(--i, 0) * (100% + .25rem) * var(--dir, 1)));
+    transition: transform var(--dur-slow) var(--ease-spring), opacity var(--dur-normal) var(--ease-out);
+  }
+  .product-nav-item { color: var(--muted); transition: color var(--dur-normal) var(--ease-out); }
+  .product-nav-item[aria-current='page'] { color: var(--bg); }
+  .product-nav-item:active { transform: scale(.97); }
+  @media (hover: hover) {
+    .product-nav-item:not([aria-current='page']):hover { color: var(--text); }
+  }
+
+  /* Segmented option, used by the theme switcher */
+  .seg-option { color: var(--muted); transition: background-color var(--dur-normal) var(--ease-out), color var(--dur-normal) var(--ease-out), box-shadow var(--dur-normal) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+  .seg-option[aria-pressed='true'] { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgb(0 0 0 / .14); }
+  .seg-option[aria-pressed='true'] svg { animation: ab-pop var(--dur-slow) var(--ease-spring); }
+  .seg-option:active { transform: scale(.92); }
+  @media (hover: hover) {
+    .seg-option:not([aria-pressed='true']):hover { color: var(--text); background: color-mix(in srgb, var(--surface) 55%, transparent); }
+  }
+
+}
+
+/*
+  Chips and cards stay unlayered: their base border and background come from Tailwind
+  utilities, so the hover and selected states must outrank the utilities layer.
+*/
+/* Lobby chips and provider chips */
+  .chip-link {
+    transition:
+      transform var(--dur-fast) var(--ease-out),
+      border-color var(--dur-normal) var(--ease-out),
+      background-color var(--dur-normal) var(--ease-out),
+      color var(--dur-normal) var(--ease-out),
+      box-shadow var(--dur-normal) var(--ease-out);
+  }
+  .chip-link[aria-current='page'] {
+    border-color: var(--accent);
+    background-color: var(--accent-soft);
+    color: var(--accent-strong);
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+  .chip-link:active { transform: scale(var(--press-scale)); }
+  @media (hover: hover) {
+    .chip-link:hover { transform: translateY(var(--lift-sm)); box-shadow: var(--shadow-1); }
+    .chip-link:not([aria-current='page']):hover { border-color: var(--accent-line); }
+    .chip-link:active { transform: scale(var(--press-scale)); }
+  }
+
+  /* Game cards */
+  .game-card {
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .08), 0 14px 30px -18px rgb(0 0 0 / .72);
+    transition:
+      transform var(--dur-normal) var(--ease-out),
+      box-shadow var(--dur-normal) var(--ease-out),
+      border-color var(--dur-normal) var(--ease-out);
+  }
+  .game-card-media { overflow: hidden; border-radius: inherit; }
+  .game-card-media > img,
+  .game-card-media > svg {
+    filter: saturate(1.08) contrast(1.04);
+    transition: transform var(--dur-slow) var(--ease-out), filter var(--dur-slow) var(--ease-out);
+    transform-origin: 50% 38%;
+  }
+  .game-card-scrim {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 54%;
+    pointer-events: none;
+    background:
+      linear-gradient(to top, rgb(4 6 12 / .96) 0%, rgb(4 6 12 / .78) 30%, rgb(4 6 12 / .28) 62%, transparent 100%),
+      radial-gradient(120% 60% at 50% 100%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%);
+  }
+  .game-card-shade {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 50% 38%, rgb(0 0 0 / .08) 0, rgb(0 0 0 / .42) 78%),
+      rgb(4 6 12 / .22);
+    opacity: 0;
+    transition: opacity var(--dur-normal) var(--ease-out);
+  }
+  .game-card-play {
+    top: 38%;
+    left: 50%;
+    width: 3.25rem;
+    height: 3.25rem;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(.72);
+    border: 1px solid rgb(255 255 255 / .42);
+    background:
+      radial-gradient(circle at 32% 26%, rgb(255 255 255 / .34), transparent 58%),
+      color-mix(in srgb, var(--accent) 52%, rgb(8 10 18 / .55));
+    backdrop-filter: blur(6px) saturate(1.3);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / .35),
+      0 12px 28px -8px rgb(0 0 0 / .7),
+      0 0 26px -4px color-mix(in srgb, var(--accent) 70%, transparent);
+    transition: opacity var(--dur-normal) var(--ease-out), transform var(--dur-slow) var(--ease-spring);
+  }
+  .game-card-play-halo {
+    position: absolute;
+    inset: -6px;
+    border-radius: inherit;
+    border: 1px solid color-mix(in srgb, var(--accent) 60%, rgb(255 255 255 / .5));
+    opacity: 0;
+  }
+  .game-card-play-glyph {
+    position: relative;
+    width: 1.45rem;
+    height: 1.45rem;
+    transform: translateX(-3px);
+    filter: drop-shadow(0 1px 2px rgb(0 0 0 / .45));
+    transition: transform var(--dur-slow) var(--ease-out);
+  }
+  .game-card-play-spark { opacity: .85; transform-origin: 5.2px 6.2px; }
+  .game-card:focus-within .game-card-play { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  .game-card:focus-within .game-card-shade { opacity: 1; }
+  .game-card-title {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1.08;
+    letter-spacing: -.015em;
+    text-wrap: balance;
+    background: linear-gradient(180deg, #fff 35%, #f2e6cf 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 1px 1px rgb(0 0 0 / .75)) drop-shadow(0 4px 10px rgb(0 0 0 / .55));
+    transition: transform var(--dur-normal) var(--ease-out);
+  }
+  .game-card-provider {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: rgb(255 255 255 / .6);
+  }
+  .game-card-provider::before {
+    content: '';
+    flex: none;
+    width: .85rem;
+    height: 1.5px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 10%, transparent));
+  }
+  @keyframes game-card-halo {
+    0% { opacity: .7; transform: scale(.92); }
+    70%, 100% { opacity: 0; transform: scale(1.22); }
+  }
+  @keyframes game-card-spark {
+    0%, 100% { opacity: .5; transform: scale(.7) rotate(0deg); }
+    50% { opacity: 1; transform: scale(1.05) rotate(45deg); }
+  }
+  .game-card:has(.game-card-launch:active) { transform: scale(.98); }
+  .game-card-action {
+    transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), opacity var(--dur-normal) var(--ease-out);
+  }
+  .game-card-action:active { transform: scale(.94); }
+  @media (hover: hover) {
+    .game-card:hover {
+      transform: translateY(var(--lift-md));
+      border-color: color-mix(in srgb, var(--accent) 62%, var(--line));
+      box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / .14),
+        0 18px 36px -16px rgb(0 0 0 / .62),
+        0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent),
+        0 14px 28px -14px var(--accent-glow);
+    }
+    .game-card:hover .game-card-media > img,
+    .game-card:hover .game-card-media > svg {
+      transform: scale(var(--zoom));
+      filter: saturate(1.16) contrast(1.06);
+    }
+    .game-card:hover .game-card-shade { opacity: 1; }
+    .game-card:hover .game-card-play { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    .game-card:hover .game-card-play-glyph { transform: translateX(-1px); }
+    .game-card:hover .game-card-play-halo { animation: game-card-halo 1.9s var(--ease-out) .2s infinite; }
+    .game-card:hover .game-card-play-spark { animation: game-card-spark 1.9s var(--ease-in-out) infinite; }
+    .game-card:hover .game-card-title { transform: translateY(-2px); }
+    .game-card-action { opacity: 0; transform: translateY(3px); }
+    .game-card:hover .game-card-action,
+    .game-card:focus-within .game-card-action { opacity: 1; transform: none; }
+    .game-card:has(.game-card-launch:active) { transform: translateY(var(--lift-sm)) scale(.985); }
+  }
+  @media (hover: none) {
+    .game-card-play,
+    .game-card:focus-within .game-card-play {
+      top: .6rem;
+      left: auto;
+      inset-inline-end: .6rem;
+      width: 2.1rem;
+      height: 2.1rem;
+      opacity: 1;
+      transform: none;
+    }
+    .game-card-play-glyph { width: 1rem; height: 1rem; transform: translateX(-2px); }
+  }
+
+  /* Promo, journal, and info cards */
+  .promo-card {
+    transition:
+      transform var(--dur-normal) var(--ease-out),
+      box-shadow var(--dur-normal) var(--ease-out),
+      border-color var(--dur-normal) var(--ease-out);
+  }
+  .promo-card img { transition: transform var(--dur-slow) var(--ease-out); }
+  .promo-card:active { transform: scale(.99); }
+  @media (hover: hover) {
+    .promo-card:hover { transform: translateY(var(--lift-sm)); border-color: var(--accent-line); box-shadow: var(--shadow-2); }
+    .promo-card:hover img { transform: scale(calc(1 + (var(--zoom) - 1) / 2)); }
+  }
+
+@layer components {
+  /* Panels and modals */
+  .surface { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-1); }
+  .panel {
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 100%, var(--accent) 2%), var(--surface) 40%);
+    box-shadow: var(--shadow-1);
+  }
+  .modal-backdrop { animation: ab-fade-in var(--dur-normal) var(--ease-out) both; }
+  .modal-panel {
+    box-shadow: var(--shadow-pop);
+    animation: ab-sheet-in var(--dur-slow) var(--ease-out) both;
+  }
+  @media (min-width: 640px) {
+    .modal-panel { animation-name: ab-modal-in; }
+  }
+  .drawer-panel { box-shadow: var(--shadow-pop); animation: ab-drawer-in var(--dur-slow) var(--ease-out) both; }
+
+  /* Skeletons */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--surface-2);
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface) 60%, transparent), transparent);
+    animation: ab-shimmer 1.4s var(--ease-in-out) infinite;
+  }
+  [dir='rtl'] .skeleton::after { animation-direction: reverse; }
+}
+
+/* AlphaBet loader: a diamond outline with a chasing segment around a turning core */
+@layer components {
+  .ab-loader { flex: none; overflow: visible; color: var(--accent); }
+}
+.ab-loader path { stroke-linejoin: round; }
+.ab-loader-track { fill: none; stroke: currentColor; stroke-width: 2.5; opacity: .2; }
+.ab-loader-arc {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 24 76;
+  animation: ab-loader-chase 1.15s linear infinite;
+}
+.ab-loader-core {
+  fill: currentColor;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ab-loader-core 1.15s var(--ease-in-out) infinite;
+}
+.ab-dots span {
+  display: inline-block;
+  width: .3rem;
+  height: .3rem;
+  border-radius: var(--radius-pill);
+  background: currentColor;
+  animation: ab-dot 1.2s var(--ease-in-out) infinite;
+}
+.ab-dots span:nth-child(2) { animation-delay: .15s; }
+.ab-dots span:nth-child(3) { animation-delay: .3s; }
+
+/* Global route progress under the header */
+.route-progress {
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 2px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.route-progress-bar {
+  position: absolute;
+  inset: 0;
+  --progress: 0;
+  background: linear-gradient(90deg, var(--accent-strong), var(--accent) 70%, color-mix(in srgb, var(--accent) 40%, white));
+  box-shadow: 0 0 10px var(--accent-glow);
+  opacity: 0;
+  transform: translateX(calc((var(--progress) - 1) * 100% * var(--dir, 1)));
+}
+[dir='rtl'] .route-progress-bar { background: linear-gradient(270deg, var(--accent-strong), var(--accent) 70%, color-mix(in srgb, var(--accent) 40%, white)); }
+.route-progress-bar[data-state='loading'] {
+  opacity: 1;
+  transition: transform 300ms var(--ease-out), opacity var(--dur-fast) linear;
+}
+.route-progress-bar[data-state='done'] {
+  opacity: 0;
+  transition: transform var(--dur-normal) var(--ease-out), opacity var(--dur-slow) var(--ease-out) 160ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { display: none; }
+  .ab-loader-arc { animation: none !important; stroke-dasharray: none; opacity: .5; }
+  .ab-loader-core { animation: ab-loader-breathe 1.6s ease-in-out infinite !important; transform: none; }
+  .ab-dots span { animation: ab-loader-breathe 1.6s ease-in-out infinite !important; }
+  .game-card-play-halo,
+  .game-card-play-spark { animation: none !important; }
+  .game-card-play,
+  .game-card:hover .game-card-play,
+  .game-card:focus-within .game-card-play { transform: translate(-50%, -50%); transition: opacity var(--dur-normal) linear; }
+  .game-card-play-glyph,
+  .game-card:hover .game-card-play-glyph,
+  .game-card:hover .game-card-title { transform: none; transition: none; }
+}
+@media (prefers-reduced-motion: reduce) and (hover: none) {
+  .game-card-play,
+  .game-card:focus-within .game-card-play { transform: none; }
+}

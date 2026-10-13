@@ -10,9 +10,9 @@ import { scrollToLobbySection } from './game-launch/casino-nav';
 import { useClientDesktop } from './game-launch/viewport';
 
 const chip =
-  'inline-flex h-11 shrink-0 items-center rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-bold text-[var(--text)] transition hover:border-[var(--accent)] aria-[current=page]:border-[var(--accent)] aria-[current=page]:text-[var(--accent)]';
+  'chip-link inline-flex h-11 shrink-0 items-center rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-bold text-[var(--text)]';
 const explore =
-  'inline-flex h-11 shrink-0 items-center gap-2 rounded-[var(--radius-md)] bg-[var(--accent)] px-4 text-sm font-black text-[var(--accent-contrast)] shadow-[var(--shadow-1)] transition hover:bg-[var(--accent-strong)]';
+  'btn btn-primary group inline-flex h-11 shrink-0 items-center gap-2 rounded-[var(--radius-md)] px-4 text-sm font-black';
 
 export function LobbySectionNav({
   pathname,
@@ -40,7 +40,7 @@ export function LobbySectionNav({
     <nav aria-label={t('label')} data-lobby-nav="" className="lobby-section-nav scrollbar-none">
       <a href="#games" className={explore}>
         {t('exploreGames')}
-        <ChevronDown aria-hidden size={18} />
+        <ChevronDown aria-hidden size={18} className="transition-transform duration-[var(--dur-normal)] group-hover:translate-y-0.5" />
       </a>
       <Link href="/casino#games" aria-current={pathname === '/casino' ? 'page' : undefined} className={chip}>
         {t('casino')}
@@ -65,7 +65,7 @@ export function LobbyGameInfo() {
   const desktop = useClientDesktop();
   if (desktop !== true || !focusedGame) return null;
   return (
-    <div className="mt-8 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)]">
+    <div className="panel fade-enter mt-8 overflow-hidden rounded-[var(--radius-lg)]">
       <GameInfo game={focusedGame} />
     </div>
   );

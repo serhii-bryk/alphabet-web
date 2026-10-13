@@ -24,7 +24,7 @@ const articles: KnowledgeArticle[] = [
       'مباشر',
       'رياضة',
     ],
-    body: 'Casino, Live Casino, and Sports are the main rooms. On a wide screen they sit in the header switch. On a phone they sit in the sticky bar under the header. Casino is /casino. Live Casino is its own room at /live-casino, same account, different lobby. The wordmark returns toward Casino. The side menu also lists Casino, Live Casino, Sports, Promotions, and Search.',
+    body: 'Casino, Live Casino, and Sports are the main rooms. On a wide screen they sit in the header switch. On a phone they sit in the sticky bar under the header. Casino is /casino. Live Casino is its own room at /live-casino, same account, different lobby. The wordmark returns toward Casino. The side menu also lists Casino, Live Casino, Favorites, Sports, Promotions, and Search.',
   },
   {
     id: 'search',

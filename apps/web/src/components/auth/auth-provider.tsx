@@ -12,8 +12,9 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { AuthRequestError, type LoginInput } from '@/data/auth-browser';
 import { LoginDialog } from './login-dialog';
+import { rememberIdentity } from './remembered-identity';
 import { RegistrationDialog, type RegistrationPrefill } from './registration-dialog';
-import { accountKey, sessionKey, useLogin } from './session';
+import { accountKey, playerKey, sessionKey, useLogin } from './session';
 
 interface AuthDialogApi {
   openLogin: (opener?: HTMLElement | null) => void;
@@ -35,6 +36,7 @@ function useRefreshSessionOnHistoryRestore() {
     const onPageShow = (event: PageTransitionEvent) => {
       if (!event.persisted) return;
       client.removeQueries({ queryKey: accountKey });
+      client.removeQueries({ queryKey: playerKey });
       void client.resetQueries({ queryKey: sessionKey });
     };
     addEventListener('pageshow', onPageShow);
@@ -96,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       inFlightRef.current = true;
       mutate(input, {
         onSuccess: () => {
+          rememberIdentity({ email: input.email });
           openerRef.current = null;
           setOpen(false);
         },

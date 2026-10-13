@@ -59,7 +59,7 @@ export function AuthDialog({
         type="button"
         tabIndex={-1}
         aria-label={t('closeDialog')}
-        className="absolute inset-0 bg-black/55"
+        className="modal-backdrop absolute inset-0 bg-black/55"
         onClick={onClose}
       />
       <div
@@ -68,7 +68,7 @@ export function AuthDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className={`surface relative max-h-[calc(100dvh-1rem)] w-full overflow-y-auto rounded-t-[var(--radius-lg)] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:max-w-md sm:rounded-[var(--radius-lg)] sm:pb-5 ${panelClassName}`}
+        className={`surface panel modal-panel relative max-h-[calc(100dvh-1rem)] w-full overflow-y-auto rounded-t-[var(--radius-lg)] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:max-w-md sm:rounded-[var(--radius-lg)] sm:pb-5 ${panelClassName}`}
       >
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>

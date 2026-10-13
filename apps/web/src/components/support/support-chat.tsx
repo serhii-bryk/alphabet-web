@@ -21,6 +21,8 @@ import { useSession } from '../auth/session';
 import { useCashier } from '../cashier/cashier-provider';
 import { useGameLauncher } from '../game-launch/provider';
 import { isDesktopViewport } from '../game-launch/viewport';
+import { AlphaBetLoader, TypingDots } from '../alphabet-loader';
+import { startRouteProgress } from '../route-progress';
 import { Button } from '../ui';
 import { supportActionHref } from './actions';
 import {
@@ -108,7 +110,7 @@ export function SupportMenuButton({
   return (
     <button
       type="button"
-      className="flex h-11 w-full items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-semibold text-[var(--muted)] hover:bg-[var(--surface-2)]"
+      className="nav-item flex h-11 w-full items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-semibold"
       aria-label={t('open')}
       onClick={() => {
         onNavigate?.();
@@ -268,6 +270,7 @@ function SupportChatPanel({
 
   const runAction = (action: SupportAction, opener: HTMLElement) => {
     if (action.type === 'navigate') {
+      startRouteProgress();
       router.push(supportActionHref(action));
       if (!isDesktopViewport()) onClose();
       return;
@@ -322,8 +325,10 @@ function SupportChatPanel({
           dir={activeLocale === 'ar' ? 'rtl' : 'ltr'}
           lang={activeLocale}
         >
-          <header className="flex items-center gap-2 border-b border-[var(--line)] px-3 py-2">
-            <LifeBuoy size={18} className="text-[var(--accent)]" />
+          <header className="support-panel-header flex items-center gap-2 border-b border-[var(--line)] px-3 py-2.5">
+            <span className="grid size-8 shrink-0 place-items-center rounded-[var(--radius-sm)] bg-[var(--accent)] text-[var(--accent-contrast)] shadow-[var(--shadow-accent)]">
+              <LifeBuoy size={17} />
+            </span>
             <h2 id={titleId} className="min-w-0 flex-1 truncate text-sm font-black">
               {t('title')}
             </h2>
@@ -384,7 +389,7 @@ function SupportChatPanel({
                 )}
                 {item.actions && item.actions.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {item.actions.map((action, index) => (
+                    {visibleActions(item.actions, status === 'authenticated').map((action, index) => (
                       <button
                         key={`${item.id}-${action.type}-${index}`}
                         type="button"
@@ -399,15 +404,20 @@ function SupportChatPanel({
               </article>
             ))}
             {pending && (
-              <p className="support-bubble support-bubble-assistant" role="status">
-                <span className="inline-block animate-pulse motion-reduce:animate-none">{t('thinking')}</span>
+              <p className="support-bubble support-bubble-assistant flex items-center gap-2" role="status">
+                <AlphaBetLoader size="sm" />
+                <span className="text-[var(--muted)]">{t('thinking')}</span>
+                <TypingDots className="text-[var(--accent)]" />
               </p>
             )}
             {handoff && (
               <div className="support-handoff">
                 <h3 className="text-sm font-black">{t('humanTitle')}</h3>
                 {channels === null ? (
-                  <p className="mt-2 text-sm text-[var(--muted)]">{t('thinking')}</p>
+                  <p role="status" className="mt-2 flex items-center gap-2 text-sm text-[var(--muted)]">
+                    <AlphaBetLoader size="sm" />
+                    {t('thinking')}
+                  </p>
                 ) : channels.length === 0 ? (
                   <p className="mt-2 text-sm leading-relaxed">{t('humanMissing')}</p>
                 ) : (
@@ -419,7 +429,7 @@ function SupportChatPanel({
                         if (!href) return null;
                         return (
                           <li key={channel.id}>
-                            <a href={href} className="text-sm font-bold text-[var(--accent-strong)]" rel="noreferrer">
+                            <a href={href} className="text-sm font-bold text-[var(--accent-strong)] underline-offset-4 hover:underline" rel="noreferrer">
                               {t(`channel.${channel.id}`)}
                               {channel.kind === 'email' ? `: ${channel.value}` : ''}
                             </a>
@@ -476,7 +486,7 @@ function SupportChatPanel({
                       void send(draft);
                     }
                   }}
-                  className="max-h-28 min-h-11 w-full resize-none rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm outline-none focus-visible:border-[var(--accent)]"
+                  className="max-h-28 min-h-11 w-full resize-none rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm outline-none transition-[border-color,box-shadow] duration-[var(--dur-normal)] focus-visible:border-[var(--accent)] focus-visible:shadow-[0_0_0_3px_var(--accent-glow)]"
                 />
               </label>
               <button type="submit" className="support-icon-button" aria-label={t('send')} disabled={pending || !draft.trim()}>
@@ -487,6 +497,16 @@ function SupportChatPanel({
         </section>
       )}
     </>
+  );
+}
+
+function visibleActions(actions: SupportAction[], authenticated: boolean): SupportAction[] {
+  if (authenticated) return actions;
+  const guestActions = actions.map((action): SupportAction =>
+    action.type === 'open_cashier' ? { type: 'open_login' } : action,
+  );
+  return guestActions.filter(
+    (action, index) => action.type !== 'open_login' || guestActions.findIndex((item) => item.type === 'open_login') === index,
   );
 }
 

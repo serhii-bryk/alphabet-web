@@ -36,6 +36,19 @@ export function SearchInput({
     </label>
   );
 }
+export function SearchResultsSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading search results" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      {Array.from({ length: 5 }, (_, index) => (
+        <div key={index} className="rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-2">
+          <Skeleton className="aspect-[3/4] w-full rounded-[var(--radius-sm)]" />
+          <Skeleton className="mt-2 h-4 w-3/4 rounded-[var(--radius-sm)]" />
+          <Skeleton className="mt-1.5 h-3 w-1/2 rounded-[var(--radius-sm)]" />
+        </div>
+      ))}
+    </div>
+  );
+}
 export function SearchResults({
   games,
   query,
@@ -47,13 +60,7 @@ export function SearchResults({
   loading?: boolean;
   error?: boolean;
 }) {
-  if (loading) {
-    return (
-      <div aria-busy="true" aria-label="Loading search results" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {Array.from({ length: 5 }, (_, index) => <Skeleton key={index} className="aspect-[16/11] w-full" />)}
-      </div>
-    );
-  }
+  if (loading) return <SearchResultsSkeleton />;
   if (error) {
     return <p role="alert" className="rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-5 text-sm text-[var(--muted)]">Search is temporarily unavailable. Please try again.</p>;
   }
@@ -69,9 +76,11 @@ export function SearchResults({
         {games.map((game) => (
           <div
             key={game.id}
-            className="rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-2"
+            className="promo-card rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-2"
           >
-            <GameThumbnail game={game} />
+            <span className="block overflow-hidden rounded-[var(--radius-sm)]">
+              <GameThumbnail game={game} />
+            </span>
             <strong className="mt-2 block truncate text-sm">{game.title}</strong>
             <span className="block truncate text-xs text-[var(--muted)]">{game.provider?.displayName ?? game.provider?.name ?? 'Independent'}</span>
           </div>
@@ -231,7 +240,7 @@ export function CommandSearch() {
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-[70] bg-black/60 p-3 pt-[10vh]"
+      className="modal-backdrop fixed inset-0 z-[70] bg-black/60 p-3 pt-[10vh]"
       onMouseDown={(e) => e.target === e.currentTarget && close()}
     >
       <div
@@ -240,7 +249,7 @@ export function CommandSearch() {
         aria-modal="true"
         aria-label="Search games"
         tabIndex={-1}
-        className="surface mx-auto max-h-[75vh] max-w-2xl overflow-auto rounded-[var(--radius-lg)] p-4"
+        className="surface panel modal-panel mx-auto max-h-[75vh] max-w-2xl overflow-auto rounded-[var(--radius-lg)] p-4"
       >
         <div className="mb-4 flex gap-2">
           <label className="flex h-12 flex-1 items-center gap-2 rounded-[var(--radius-md)] bg-[var(--surface-2)] px-3">
@@ -254,7 +263,11 @@ export function CommandSearch() {
               className="w-full bg-transparent outline-none"
             />
           </label>
-          <button aria-label="Close search" onClick={close}>
+          <button
+            aria-label="Close search"
+            onClick={close}
+            className="window-control grid size-12 shrink-0 place-items-center rounded-[var(--radius-md)] text-[var(--muted)]"
+          >
             <X />
           </button>
         </div>
@@ -281,13 +294,13 @@ export function SearchTrigger({
           }),
         )
       }
-      className={`h-10 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface-2)] text-sm text-[var(--muted)] ${iconOnly ? 'grid size-10 place-items-center' : 'flex px-3'} ${className}`}
+      className={`pressable h-10 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface-2)] text-sm text-[var(--muted)] hover:border-[var(--accent-line)] hover:bg-[var(--surface)] hover:text-[var(--text)] ${iconOnly ? 'grid size-10 place-items-center' : 'flex min-w-56 px-3'} ${className}`}
     >
       <SearchIcon size={17} />
       {!iconOnly && (
         <>
           {' '}
-          Search <kbd className="ml-6 text-[10px]">⌘K</kbd>
+          Search <kbd className="ms-auto rounded border border-[var(--line)] bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-semibold">⌘K</kbd>
         </>
       )}
     </button>

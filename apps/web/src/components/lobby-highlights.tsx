@@ -16,11 +16,14 @@ export function LobbyHighlights() {
   ];
 
   return (
-    <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,.8fr)]">
-      <section aria-labelledby="lobby-offers" id="promotions" tabIndex={-1} className="lobby-anchor outline-none">
+    <div className="mt-14 space-y-12 lg:mt-16 lg:space-y-14">
+      <section aria-labelledby="lobby-offers" id="promotions" tabIndex={-1} className="lobby-anchor lobby-promotions outline-none">
         <div className="mb-3 flex items-end justify-between gap-3">
-          <h2 id="lobby-offers" className="text-lg font-black">{t('promotions')}</h2>
-          <Link href="/promotions" className="text-sm font-bold text-[var(--accent-strong)]">
+          <div>
+            <h2 id="lobby-offers" className="lobby-title text-lg font-black">{t('promotions')}</h2>
+            <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">{t('promotionsLede')}</p>
+          </div>
+          <Link href="/promotions" className="shrink-0 text-sm font-bold text-[var(--accent-strong)]">
             {t('allPromotions')}
           </Link>
         </div>
@@ -29,37 +32,38 @@ export function LobbyHighlights() {
             <Link
               key={offer.title}
               href={offer.href}
-              className="relative min-h-40 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] p-4 transition hover:border-[var(--accent)]"
+              className="promo-card banner-copy relative min-h-44 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)]"
             >
-              <BrandBanner variant="promo" sizes="(min-width: 1024px) 28vw, 100vw" />
+              <BrandBanner variant="promo" sizes="(min-width: 1024px) 36vw, 100vw" />
               <div className="relative">
                 <p className="text-[10px] font-black uppercase tracking-[.14em] text-[var(--warning)]">{t('preview')}</p>
                 <h3 className="mt-2 text-base font-black">{offer.title}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">{offer.body}</p>
+                <p className="mt-1 max-w-sm text-sm leading-relaxed text-[var(--muted)]">{offer.body}</p>
               </div>
             </Link>
           ))}
         </div>
       </section>
-      <section aria-labelledby="lobby-journal">
+      <section aria-labelledby="lobby-journal" id="journal" tabIndex={-1} className="lobby-anchor lobby-journal outline-none">
         <div className="mb-3 flex items-end justify-between gap-3">
-          <h2 id="lobby-journal" className="text-lg font-black">{t('journal')}</h2>
-          <Link href="/journal" className="text-sm font-bold text-[var(--accent-strong)]">
+          <div>
+            <h2 id="lobby-journal" className="lobby-title text-lg font-black">{t('journal')}</h2>
+            <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">{t('journalLede')}</p>
+          </div>
+          <Link href="/journal" className="shrink-0 text-sm font-bold text-[var(--accent-strong)]">
             {t('allNotes')}
           </Link>
         </div>
-        <div className="grid gap-3">
+        <div className="grid gap-3 md:grid-cols-2">
           {notes.map((note) => (
-            <Link
-              key={note.title}
-              href={note.href}
-              className="relative min-h-32 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] p-4 transition hover:border-[var(--accent)]"
-            >
-              <BrandBanner variant="journal" sizes="(min-width: 1024px) 24vw, 100vw" />
-              <div className="relative">
+            <Link key={note.title} href={note.href} className="journal-note">
+              <span className="journal-note-media">
+                <BrandBanner variant="journal" scrim="none" sizes="140px" />
+              </span>
+              <span className="journal-note-copy">
                 <h3 className="text-base font-black">{note.title}</h3>
                 <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">{note.body}</p>
-              </div>
+              </span>
             </Link>
           ))}
         </div>

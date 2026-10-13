@@ -1,0 +1,38 @@
+---
+description: Safe Git handoff after verified implementation work
+alwaysApply: true
+---
+
+# Git handoff
+
+The orchestrating agent prepares this handoff. Other agents do not create branches, stage, or commit. Fast Development Mode is unchanged: no extra agents or review stages.
+
+## Before implementation
+
+Inspect the current branch, `git status`, and existing branch names. Do not overwrite, discard, stage, commit, stash, or restore unrelated changes. Do not stage secrets or gitignored env files.
+
+## When to prepare it
+
+After the verification that task already requires has passed, propose the handoff. Do not commit during implementation.
+
+- Keep the current branch when it already fits the work and is not `main`, `master`, or `develop`.
+- Otherwise propose one branch, `feature/<short-name>` or `fix/<short-name>`. If the repo already uses a branch pattern, follow that pattern.
+- Do not commit on `main`, `master`, or `develop` unless the user explicitly authorizes that branch.
+- Creating a branch must leave unrelated uncommitted files unstaged. Do not move, stash, or clean them.
+- Push, force-push, rebase, reset, cherry-pick, merge, and pull requests need separate explicit authorization.
+
+## Approval
+
+Show the proposal and wait. A general request to finish with a commit does not approve a specific branch, file list, or message. Use Cursor's native Git confirmation when it is offered; otherwise ask in chat.
+
+- Current branch
+- Proposed branch, if it differs
+- Files to stage
+- Suggested commit message, in the repo's existing style
+- Brief summary
+- Checks passed or failed
+- Unrelated changes left untouched
+
+After approval, run only those commands. Stop if the branch, status, or diff no longer matches the proposal. With no approval, stop here and leave the work uncommitted.
+
+Report a commit only after it succeeds, with the branch name and short SHA.

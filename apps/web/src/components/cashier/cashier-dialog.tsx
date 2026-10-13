@@ -3,10 +3,10 @@ import { useId, useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PaymentErrorCode, PaymentMethod, PaymentStatusResponse } from '@brand/contracts';
 import { useLocale, useTranslations } from 'next-intl';
-import { LoaderCircle } from 'lucide-react';
 import { PaymentRequestError, fetchPaymentMethods, submitDeposit, submitWithdraw } from '@/data/payments-browser';
 import { AuthDialog } from '../auth/auth-dialog';
 import { accountKey, useBalance } from '../auth/session';
+import { AlphaBetLoader } from '../alphabet-loader';
 import { Button } from '../ui';
 
 const inputClass =
@@ -107,10 +107,11 @@ export function CashierDialog({
             type="button"
             role="tab"
             aria-selected={tab === item}
-            className="h-11 rounded-[var(--radius-md)] border border-[var(--line)] text-sm font-semibold"
+            className="pressable h-11 rounded-[var(--radius-md)] border text-sm font-semibold"
             style={{
               background: tab === item ? 'var(--text)' : 'var(--surface)',
               color: tab === item ? 'var(--bg)' : 'var(--muted)',
+              borderColor: tab === item ? 'var(--text)' : 'var(--line)',
             }}
             onClick={() => {
               setTab(item);
@@ -128,7 +129,8 @@ export function CashierDialog({
         </p>
       )}
       {methods.isPending ? (
-        <p role="status" className="text-sm text-[var(--muted)]">
+        <p role="status" className="flex min-h-24 items-center justify-center gap-3 text-sm text-[var(--muted)]">
+          <AlphaBetLoader size="md" />
           {t('loadingMethods')}
         </p>
       ) : methods.isError || !list ? (
@@ -143,7 +145,7 @@ export function CashierDialog({
             {list.map((method) => (
               <label
                 key={method.id}
-                className="flex min-h-11 cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border border-[var(--line)] px-3 text-sm font-semibold"
+                className="pressable flex min-h-11 cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border border-[var(--line)] px-3 text-sm font-semibold hover:border-[var(--accent-line)] has-[:checked]:border-[var(--accent)] has-[:checked]:bg-[var(--accent-soft)]"
               >
                 <input
                   type="radio"
@@ -170,7 +172,7 @@ export function CashierDialog({
                 <button
                   key={value}
                   type="button"
-                  className="h-10 rounded-[var(--radius-pill)] border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold"
+                  className="pressable h-10 rounded-[var(--radius-pill)] border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold tabular-nums hover:border-[var(--accent-line)] hover:bg-[var(--accent-soft)]"
                   onClick={() => setAmount(String(value))}
                 >
                   {value}
@@ -225,7 +227,7 @@ export function CashierDialog({
             </p>
           )}
           <Button type="submit" disabled={mutation.isPending} aria-busy={mutation.isPending || undefined}>
-            {mutation.isPending && <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" size={16} />}
+            {mutation.isPending && <AlphaBetLoader size="sm" className="text-current" />}
             {mutation.isPending
               ? t('submitting')
               : tab === 'withdraw'

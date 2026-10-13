@@ -65,7 +65,7 @@ describe('GameCard demo affordance', () => {
     expect(html).not.toContain('>DEMO<');
     expect(html).not.toContain('Demo unavailable');
     expect(html).not.toContain('aria-busy');
-    expect(html).toContain('group-hover:-translate-y-1');
+    expect(html).toContain('game-card-play');
   });
 
   it('marks only the launching card busy', () => {
@@ -79,7 +79,7 @@ describe('GameCard demo affordance', () => {
 
     expect(busy.match(/aria-busy="true"/g)).toHaveLength(1);
     expect(busy).toContain('aria-label="Play Book of Tests demo" aria-busy="true"');
-    expect(busy).toContain('motion-reduce:animate-none');
+    expect(busy).toContain('data-alphabet-loader');
   });
 
   it('offers guests only sign-in for demo-disabled games', () => {
@@ -108,7 +108,7 @@ describe('GameCard demo affordance', () => {
       </GameLauncherContext.Provider>,
     );
 
-    expect(html).toMatch(/<button type="button" aria-label="Play Book of Tests" class="block/);
+    expect(html).toMatch(/<button type="button" aria-label="Play Book of Tests" class="game-card-launch block/);
     expect(html).toContain('aria-label="Play Book of Tests demo"');
     expect(html).toContain('aria-label="Play Live Only"');
     expect(html).not.toContain('Play Live Only demo');
@@ -134,7 +134,7 @@ describe('GameView', () => {
     expect(html).toContain('Back to lobby');
     expect(html).toContain('role="status"');
     expect(html).toContain('Starting demo…');
-    expect(html).toContain('motion-reduce:animate-none');
+    expect(html).toContain('data-alphabet-loader');
     expect(html).not.toContain('<iframe');
   });
 
@@ -196,7 +196,9 @@ describe('GameView', () => {
     const real: GameLaunchTarget = { game, mode: 'real' };
     const html = renderView({ status: 'loading', target: real, attempt: 1, launchUrl });
 
-    expect(html).toContain('Studio Games · Real money');
+    expect(html).toContain('Studio Games');
+    expect(html).not.toContain('Real money');
+    expect(html).not.toContain('game-mode-chip');
     expect(iframeTag(html)).toContain('title="Book of Tests game"');
     expect(renderView({ status: 'launching', target: real, attempt: 1 })).toContain(
       'Starting game…',
@@ -259,7 +261,7 @@ describe('desktop game layer', () => {
   function panel(
     id: string,
     title: string,
-    presentation: 'page' | 'floating' | 'minimized' = 'floating',
+    presentation: 'page' | 'background' | 'floating' | 'minimized' = 'floating',
   ) {
     return {
       id,
@@ -293,15 +295,19 @@ describe('desktop game layer', () => {
     expect(html).toContain('Add Game');
     expect(html).toContain('pointer-events-none');
     expect(html).toContain(`src="${launchUrl}"`);
-    expect(html).toContain('hidden=""');
+    expect(html.match(/<iframe/g)).toHaveLength(2);
+    expect(html).toContain('game-live-parked');
+    expect(html).toContain('data-game-parked');
+    expect(html).toContain('inert=""');
+    expect(html).not.toContain('hidden=""');
     expect(html).not.toContain('role="dialog"');
     expect(html).not.toContain('aria-modal');
     expect(html).not.toContain('Game details');
-    expect(html).not.toContain('data-keep-open');
+    expect(html).not.toContain('data-pop-out');
     expect(html).not.toContain('data-game-page');
   });
 
-  it('renders the first desktop game as a full page with keep open', () => {
+  it('renders the first desktop game as a full page with a pop-out toolbar', () => {
     const html = renderToStaticMarkup(
       <NextIntlClientProvider locale="en" messages={messages}>
         <DesktopGameLayer
@@ -314,13 +320,39 @@ describe('desktop game layer', () => {
     );
 
     expect(html).toContain('data-game-page');
-    expect(html).toContain('data-keep-open');
-    expect(html).toContain('Keep open');
+    expect(html).toContain('role="toolbar"');
+    expect(html).toContain('data-pop-out');
+    expect(html).toContain('aria-label="Pop out Book of Tests into a floating window"');
+    expect(html).not.toContain('Keep open');
     expect(html).toContain('Back to lobby');
     expect(html).toContain('Game details');
-    expect(html).toContain('data-add-game');
+    expect(html).toContain('Demo available');
+    expect(html).not.toContain('RTP');
+    expect(html.match(/data-add-game/g)).toHaveLength(1);
     expect(html).not.toContain('width:720px');
     expect(html).not.toContain('role="dialog"');
+    expect(html).not.toContain('data-game-parked');
+  });
+
+  it('keeps a background game iframe mounted without the hidden attribute', () => {
+    const html = renderToStaticMarkup(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <DesktopGameLayer
+          panels={[panel('406', 'Book of Tests', 'background'), panel('407', 'Second Game', 'page')]}
+          focusedId="407"
+          limitNotice={false}
+          {...handlers}
+        />
+      </NextIntlClientProvider>,
+    );
+
+    expect(html.match(/<iframe/g)).toHaveLength(2);
+    expect(html).toContain('data-game-parked');
+    expect(html).toContain('inert=""');
+    expect(html).toContain('data-game-page');
+    expect(html).not.toContain('hidden=""');
+    expect(html).not.toContain('display:none');
+    expect(html).not.toContain('visibility:hidden');
   });
 });
 
@@ -382,7 +414,10 @@ describe('mobile workspace', () => {
     expect(html).toContain('aria-modal="true"');
     expect(html).toContain('role="tablist"');
     expect(html).toContain('Add game');
-    expect(html).toContain('hidden=""');
+    expect(html).toContain('data-game-parked');
+    expect(html).toContain('game-live-parked');
+    expect(html).toContain('inert=""');
+    expect(html).not.toContain('hidden=""');
     expect(html).not.toContain('data-desktop-game-layer');
     expect(html).not.toContain('Add Game');
   });

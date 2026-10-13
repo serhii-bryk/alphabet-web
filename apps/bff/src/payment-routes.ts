@@ -263,7 +263,7 @@ async function authenticatedActor(c: Context, dependencies: PaymentRouteDependen
     session: resolved.session,
     ip: firstForwardedIp(c.req.header('x-forwarded-for')),
     browser: loginBrowser(c.req.header('user-agent')),
-    locale: paymentLocale(c.req.header('referer'), dependencies.webOrigin),
+    locale: paymentLocale(c.req.header('cookie'), c.req.header('referer'), dependencies.webOrigin),
   };
 }
 
@@ -297,7 +297,13 @@ function bodyFailureCode(error: z.ZodError): PaymentErrorCode {
   return 'invalid_amount';
 }
 
-function paymentLocale(referer: string | undefined, webOrigin: string | undefined): 'en' | 'ar' {
+function paymentLocale(
+  cookieHeader: string | undefined,
+  referer: string | undefined,
+  webOrigin: string | undefined,
+): 'en' | 'ar' {
+  const fromCookie = localeCookie(cookieHeader);
+  if (fromCookie) return fromCookie;
   if (!referer || !webOrigin) return 'en';
   try {
     const url = new URL(referer);
@@ -307,6 +313,17 @@ function paymentLocale(referer: string | undefined, webOrigin: string | undefine
     return 'en';
   }
   return 'en';
+}
+
+function localeCookie(header: string | undefined): 'en' | 'ar' | null {
+  if (!header) return null;
+  for (const part of header.split(';')) {
+    const [name, ...rest] = part.trim().split('=');
+    if (name !== 'NEXT_LOCALE') continue;
+    const value = decodeURIComponent(rest.join('='));
+    if (value === 'en' || value === 'ar') return value;
+  }
+  return null;
 }
 
 function isJsonContentType(header: string | undefined): boolean {

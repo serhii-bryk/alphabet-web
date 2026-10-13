@@ -198,8 +198,8 @@ describe('deposit payments', () => {
       customer: Record<string, string>;
     };
     const paymentId = data.callback_url.split('/').pop();
-    const success = `http://localhost:3000/en/casino?cashier=deposit&result=success&paymentId=${paymentId}`;
-    const cancel = `http://localhost:3000/en/casino?cashier=deposit&result=cancelled&paymentId=${paymentId}`;
+    const success = `http://localhost:3000/casino?cashier=deposit&result=success&paymentId=${paymentId}`;
+    const cancel = `http://localhost:3000/casino?cashier=deposit&result=cancelled&paymentId=${paymentId}`;
     expect(data.error_url).toBe(data.success_url);
     expect(data.pay.amount).toBeUndefined();
     expect(initBody.checksum).toBe(

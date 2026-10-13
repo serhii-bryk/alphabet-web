@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'AlphaBet', short_name: 'AlphaBet', description: 'Casino and sportsbook',
-    start_url: '/en/casino', display: 'standalone', background_color: '#0d1212',
+    start_url: '/casino', display: 'standalone', background_color: '#0d1212',
     theme_color: '#151c1b',
     icons: [
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },

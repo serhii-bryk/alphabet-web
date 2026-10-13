@@ -16,9 +16,9 @@ export default async function Page() {
   ];
   return (
     <section className="py-2">
-      <header className="relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] px-5 py-6 sm:px-7 sm:py-8">
-        <BrandBanner variant="promo" sizes="(min-width: 768px) 960px, 100vw" />
-        <div className="relative">
+      <header className="page-hero relative flex min-h-[220px] items-end overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] px-5 py-6 sm:min-h-[280px] sm:px-7 sm:py-8">
+        <BrandBanner variant="promo" scrim="stage" sizes="(min-width: 768px) 960px, 100vw" />
+        <div className="banner-copy relative">
           <p className="text-xs font-black uppercase tracking-[.16em] text-[var(--warning)]">{t('promoEyebrow')}</p>
           <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">{t('promoTitle')}</h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--muted)] sm:text-base">{t('promoLede')}</p>

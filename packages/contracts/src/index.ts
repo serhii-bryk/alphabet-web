@@ -76,6 +76,21 @@ export interface CatalogGame {
   gameType?: string | null;
   /** Platform `created_at`. Null when Platform sends none. */
   listedAt?: string | null;
+  /** Distinct plays. Present only when a personalization response included it. */
+  played?: number;
+  /** BET events. Present only when most-played included it. */
+  rounds?: number;
+  /** Last played time. Present only when a personalization response included it. */
+  lastPlayed?: string | null;
+}
+
+export interface PlayerFavoritesResponse {
+  games: CatalogGame[];
+}
+
+export interface PlayerPlayedResponse {
+  games: CatalogGame[];
+  pagination: CatalogPagination;
 }
 
 export interface CatalogPagination {

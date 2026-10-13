@@ -7,9 +7,8 @@ import { Button } from '../ui';
 import { useAuthDialog } from './auth-provider';
 import { useBalance, useLogout, useSession } from './session';
 
-const secondaryClass = 'bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-3)]';
 const registerClass =
-  'inline-flex h-11 min-h-11 items-center justify-center rounded-[var(--radius-md)] bg-[var(--accent)] font-semibold text-[var(--accent-contrast)] transition hover:bg-[var(--accent-strong)]';
+  'btn btn-primary inline-flex h-11 min-h-11 items-center justify-center rounded-[var(--radius-md)] font-semibold';
 
 export function formatBalance({ balance, currency }: PlayerBalance, locale: string) {
   try {
@@ -26,7 +25,7 @@ function AuthSkeleton({ className }: { className: string }) {
       role="status"
       aria-label={t('loadingAccount')}
       data-testid="auth-skeleton"
-      className={`block h-10 shrink-0 animate-pulse rounded-[var(--radius-md)] bg-[var(--surface-2)] motion-reduce:animate-none ${className}`}
+      className={`skeleton block h-10 shrink-0 rounded-[var(--radius-md)] ${className}`}
     />
   );
 }
@@ -39,14 +38,14 @@ export function BalanceChip() {
     return (
       <span
         aria-label={t('loadingBalance')}
-        className="block h-10 w-24 animate-pulse rounded-[var(--radius-md)] bg-[var(--surface-2)] motion-reduce:animate-none"
+        className="skeleton block h-10 w-24 rounded-[var(--radius-md)]"
       />
     );
   }
   return (
     <span
       data-testid="balance"
-      className="inline-flex h-10 items-center rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-bold tabular-nums"
+      className="motion-enter inline-flex h-10 items-center rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-bold tabular-nums shadow-[inset_0_1px_0_rgb(255_255_255/.06)]"
     >
       <span className="sr-only">{t('balance')}</span>
       {balance.data ? formatBalance(balance.data, locale) : '—'}
@@ -60,11 +59,12 @@ function LogoutButton({ className = '' }: { className?: string }) {
   return (
     <Button
       type="button"
+      variant="secondary"
       disabled={logout.isPending}
       onClick={() => {
         if (!logout.isPending) logout.mutate();
       }}
-      className={`${secondaryClass} ${className}`}
+      className={className}
     >
       <LogOut aria-hidden size={16} />
       {t('logout')}
@@ -79,9 +79,9 @@ function AccountLink({ email, onNavigate }: { email: string; onNavigate?: () => 
       href="/account"
       onClick={onNavigate}
       aria-label={t('accountFor', { email })}
-      className="inline-flex h-10 min-w-0 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-semibold hover:bg-[var(--surface-2)]"
+      className="pressable inline-flex h-10 min-w-0 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-semibold hover:border-[var(--accent-line)] hover:bg-[var(--surface-2)]"
     >
-      <UserRound aria-hidden size={16} className="shrink-0" />
+      <UserRound aria-hidden size={16} className="shrink-0 text-[var(--accent)]" />
       <span className="max-w-[160px] truncate">{email}</span>
     </Link>
   );
@@ -97,7 +97,7 @@ export function HeaderAuth() {
       <div className="flex gap-2">
         <Button
           type="button"
-          className={secondaryClass}
+          variant="secondary"
           onClick={(event) => openLogin(event.currentTarget)}
         >
           {t('login')}
@@ -152,7 +152,8 @@ export function DrawerAuth({ onNavigate }: { onNavigate: () => void }) {
       <div className="flex gap-2">
         <Button
           type="button"
-          className={`flex-1 ${secondaryClass}`}
+          variant="secondary"
+          className="flex-1"
           onClick={() => {
             onNavigate();
             openLogin();

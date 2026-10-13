@@ -1,7 +1,9 @@
 'use client';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Gamepad2,
+  Heart,
   House,
   Menu,
   Percent,
@@ -28,16 +30,21 @@ import { DrawerAuth, HeaderAuth, MobileHeaderAuth } from './auth/header-auth';
 import { useEndSession, useSession } from './auth/session';
 import { ProductNav } from './product-nav';
 import { SiteFooter } from './site-footer';
+import { RouteProgress } from './route-progress';
 
 const nav = [
   { href: '/casino', labelKey: 'casino', icon: House },
   { href: '/live-casino', labelKey: 'live', icon: Gamepad2 },
+  { href: '/favorites', labelKey: 'favorites', icon: Heart },
   { href: '/sports', labelKey: 'sports', icon: Trophy },
   { href: '/promotions', labelKey: 'promotions', icon: Percent },
   { href: '/search', labelKey: 'search', icon: Search },
 ] as const;
 const mobileNav = [
-  ...nav.slice(0, 4),
+  { href: '/casino', labelKey: 'casino', icon: House },
+  { href: '/live-casino', labelKey: 'live', icon: Gamepad2 },
+  { href: '/sports', labelKey: 'sports', icon: Trophy },
+  { href: '/promotions', labelKey: 'promotions', icon: Percent },
   { href: '/account', labelKey: 'account', icon: UserRound },
 ] as const;
 function Navigation({
@@ -61,11 +68,7 @@ function Navigation({
             onClick={onNavigate}
             aria-current={active ? 'page' : undefined}
             aria-label={compact ? label : undefined}
-            className="flex h-11 items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-semibold transition"
-            style={{
-              background: active ? 'var(--surface-2)' : 'transparent',
-              color: active ? 'var(--text)' : 'var(--muted)',
-            }}
+            className="nav-item flex h-11 items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-semibold"
           >
             <Icon size={19} />
             {!compact && label}
@@ -92,12 +95,13 @@ export function Shell({ children }: { children: ReactNode }) {
       return next;
     });
   const sports = path === '/sports';
+  const area = sports ? 'sports' : path.startsWith('/live-casino') ? 'live' : path.startsWith('/casino') ? 'casino' : 'neutral';
   return (
     <AuthProvider>
       <CashierProvider>
       <SessionGameLaunch>
       <SupportChatProvider>
-      <div className={`shell ${collapsed ? 'sidebar-collapsed' : ''} ${sports ? 'shell-sports' : ''}`} id="app-shell">
+      <div className={`shell ${collapsed ? 'sidebar-collapsed' : ''} ${sports ? 'shell-sports' : ''}`} id="app-shell" data-area={area}>
         <header className="fixed inset-x-0 top-0 z-[64] flex h-[var(--header-h)] items-center gap-2 border-b border-[var(--line)] bg-[var(--bg)]/95 px-3 backdrop-blur-sm lg:gap-3 lg:px-5">
           <IconButton label={shellT('openMenu')} className="mobile-only" onClick={() => setDrawer(true)}>
             <Menu size={20} />
@@ -125,9 +129,10 @@ export function Shell({ children }: { children: ReactNode }) {
               <DepositButton appearance="header" />
             </div>
           </div>
+          <RouteProgress />
         </header>
         <aside
-          className="desktop-only fixed bottom-0 start-0 top-[var(--header-h)] z-[64] w-[236px] flex-col border-e border-[var(--line)] bg-[var(--surface)] p-3 transition-[width]"
+          className="desktop-only fixed bottom-0 start-0 top-[var(--header-h)] z-[64] w-[236px] flex-col border-e border-[var(--line)] bg-[var(--surface)] p-3 transition-[width] duration-[var(--dur-normal)] ease-[var(--ease-out)]"
           style={{ width: collapsed ? 76 : 236 }}
         >
           <div className="mb-3 flex justify-end">
@@ -184,7 +189,7 @@ export function Shell({ children }: { children: ReactNode }) {
               key={href}
               href={href}
               aria-current={path === href ? 'page' : undefined}
-              className="flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold"
+              className="bottom-nav-item flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold"
               style={{ color: path === href ? 'var(--accent)' : 'var(--muted)' }}
             >
               <Icon size={19} />
@@ -202,14 +207,22 @@ export function Shell({ children }: { children: ReactNode }) {
   );
 }
 function SessionGameLaunch({ children }: { children: ReactNode }) {
-  const { status } = useSession();
+  const { status, session } = useSession();
+  const client = useQueryClient();
   const endSession = useEndSession();
   const { openLogin } = useAuthDialog();
+  const playerId = session?.playerId;
+  const onRealLaunch = useCallback(() => {
+    if (!playerId) return;
+    void client.invalidateQueries({ queryKey: ['player', playerId, 'last-played'] });
+    void client.invalidateQueries({ queryKey: ['player', playerId, 'most-played'] });
+  }, [client, playerId]);
   return (
     <GameLaunchProvider
       authenticated={status === 'authenticated'}
       onAuthRequired={openLogin}
       onSessionEnded={endSession}
+      onRealLaunch={onRealLaunch}
     >
       {children}
     </GameLaunchProvider>
@@ -228,7 +241,7 @@ function Placeholder({
   return (
     <button
       title={shellT('itemPlaceholder', { label })}
-      className="flex h-11 w-full items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-semibold text-[var(--muted)] hover:bg-[var(--surface-2)]"
+      className="nav-item flex h-11 w-full items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-semibold"
     >
       <Icon size={19} />
       {!compact && label}

@@ -4,7 +4,7 @@ Source of truth for the current product. Read this before reconstructing history
 
 Update this file at the end of every completed milestone, and whenever an important architecture or integration decision changes. Record names and decisions only. Never store secrets, passwords, API keys, tokens, HMAC material, or personal test-account credentials.
 
-Last updated: 2026-10-12 (AlphaBet support chat).
+Last updated: 2026-10-13 (player casino personalization; Git handoff).
 
 ## Product goal
 
@@ -32,6 +32,7 @@ Fast Development Mode, coordinated by `.cursor/agents/orchestrator.md`.
 - One implementation agent when the work is not separable. Split into `bff-developer` and `frontend-developer` only when it is.
 - During implementation: targeted tests only. No full suite and no reviewers after every edit.
 - When a milestone is implementation-complete: typecheck, lint, relevant Vitest, Playwright where the UI changed, then independent test review and code review. UX review only if the user-visible UI changed materially.
+- After that verification, the orchestrator prepares the Git handoff in `.cursor/rules/git-handoff.mdc` and waits for approval. It does not commit on `main`, `master`, or `develop`, and does not push, unless explicitly authorized.
 - Stop for human approval before architecture, Platform contracts, auth/security, database schema, payments, major dependencies, deployment, or product tradeoffs.
 - CI mocks Platform and never calls stage.
 
@@ -50,6 +51,7 @@ Fast Development Mode, coordinated by `.cursor/agents/orchestrator.md`.
 - Account profile and balance for the authenticated player.
 - Payments core: cashier deposit and withdrawal through the BFF. The browser never calls the payment provider or Platform directly. A confirmed deposit credits the wallet only from the BFF after a trusted captured callback. Test deposit is a separate guarded path. Transaction history is not built.
 - Registration UI and BFF: two-step signup. A successful Platform register is followed by the existing login flow, which seals the httpOnly session. Email verification is not required. One stage call with `SESSION_SECRET` set created an account, logged in, and returned an authenticated session while `emailVerified` was false. That call is not part of CI.
+- Player casino personalization stored on Platform. Favorites, last played, and most played use the sealed session player id. The browser calls `/api/player/favorites`, `/api/player/last-played`, and `/api/player/most-played` and never sends a player id. Favorites are the full Platform list. Last played and most played use Platform’s paginator (`page`, `limit`, `order`, and the confirmed date or count filters). Pages are `/favorites`, `/recently-played`, and `/most-played` (no locale prefix). Guests get the existing sign-in dialog from a heart and a sign-in prompt on those pages. Signed-in hearts are optimistic, shared across cards, game info, and the game toolbar, and roll back on failure. The default casino lobby shows compact Recently Played and Favorites rails, then the existing discovery grid, then Most Played. Empty rails stay hidden. A successful real launch refreshes last played and most played. Logout drops those caches.
 - In-product support chat. The browser calls `POST /api/support/chat` and `GET /api/support/channels`. The BFF calls the AI provider. Confirmed product facts live in `apps/bff/src/support/knowledge.ts`. Answers can include only the safe actions `navigate`, `open_cashier`, `open_login`, `open_registration`, and `open_human_support`. The active conversation is kept in `sessionStorage` (`alphabet.supportChat.v1`). English and Arabic are supported, and Arabic uses a right-to-left panel. Human handoff shows only configured contacts. Support cannot move money or change an account.
 
 ## Current integrations
@@ -69,6 +71,8 @@ All paths are under the configured `/api/v1` base.
 - `GET /player/:id/profile`, `GET /player/:id/balance`
 - `GET /games`, `GET /games/providers`, `GET /games/categories`
 - `POST /player/game/launch`
+- `GET /player/:id/favorites`, `POST /player/:id/favorites` with JSON `{ game_id }`, `DELETE /player/:id/favorites/:gameId`
+- `GET /player/:id/games/last-played`, `GET /player/:id/games/most-played`
 - `POST /transactions/deposit` — the only wallet credit. Called after a captured deposit callback, and for the guarded test deposit.
 - `POST /transactions/withdraw/request`, `POST /transactions/withdraw/approve`, `POST /transactions/withdraw/confirm`, `POST /transactions/withdraw/rollback`
 
@@ -149,7 +153,7 @@ Web:
 
 ## Next recommended milestone
 
-The support chat is in place. Transaction history is still deferred. Casino and Live Casino remain the active product surface. Do not start sportsbook work or another milestone until that is explicitly requested. Email verification is not the next milestone.
+Casino personalization is in place. Transaction history is still deferred. Do not start another milestone until that is explicitly requested. A stage login with the stored test account was rejected as invalid credentials on 2026-10-13, so add, remove, and play-history were not confirmed against live Platform data. Email verification is not the next milestone.
 
 ## Payments
 

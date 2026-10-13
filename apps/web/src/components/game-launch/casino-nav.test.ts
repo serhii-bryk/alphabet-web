@@ -8,14 +8,14 @@ describe('openCasinoGameSection', () => {
     const section = document.getElementById('games') as HTMLElement;
     section.scrollIntoView = vi.fn();
     section.focus = vi.fn();
-    window.history.replaceState({ marker: 1 }, '', '/en/casino');
+    window.history.replaceState({ marker: 1 }, '', '/casino');
     const pushState = vi.spyOn(window.history, 'pushState');
     const push = vi.fn();
 
     openCasinoGameSection('/casino', push);
 
     expect(push).not.toHaveBeenCalled();
-    expect(pushState).toHaveBeenCalledWith({ marker: 1 }, '', '/en/casino#games');
+    expect(pushState).toHaveBeenCalledWith({ marker: 1 }, '', '/casino#games');
     expect(section.scrollIntoView).toHaveBeenCalled();
     pushState.mockRestore();
   });

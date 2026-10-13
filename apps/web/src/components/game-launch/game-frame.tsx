@@ -1,21 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { CircleAlert, LoaderCircle, LogIn, RotateCcw } from 'lucide-react';
+import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { CircleAlert, LogIn, RotateCcw } from 'lucide-react';
 import type { GameLaunchErrorCode, GameLaunchMode } from '@brand/contracts';
 import { useTranslations } from 'next-intl';
+import { AlphaBetLoader } from '../alphabet-loader';
 import { Button } from '../ui';
 import { GAME_LOAD_TIMEOUT_MS, isRetryable, type GameLaunchState } from './state';
 import type { ActiveLaunch } from './workspace-state';
 
 function Spinner() {
-  return (
-    <LoaderCircle
-      aria-hidden
-      size={28}
-      className="animate-spin text-[var(--accent)] motion-reduce:animate-none"
-    />
-  );
+  return <AlphaBetLoader size="lg" />;
 }
 
 function StatusPanel({
@@ -33,7 +28,7 @@ function StatusPanel({
 }) {
   return (
     <div className="absolute inset-0 grid place-items-center bg-[var(--bg)] p-6">
-      <div role={role} className="flex max-w-sm flex-col items-center gap-3 text-center">
+      <div role={role} className="motion-enter flex max-w-sm flex-col items-center gap-3 text-center">
         {icon}
         <p className="text-base font-bold">{title}</p>
         {body && <p className="text-sm text-[var(--muted)]">{body}</p>}
@@ -42,6 +37,31 @@ function StatusPanel({
     </div>
   );
 }
+
+const StableGameIframe = memo(function StableGameIframe({
+  attempt,
+  src,
+  title,
+  onLoad,
+}: {
+  attempt: number;
+  src: string;
+  title: string;
+  onLoad: () => void;
+}) {
+  return (
+    <iframe
+      key={attempt}
+      src={src}
+      title={title}
+      allow="autoplay; fullscreen; encrypted-media"
+      allowFullScreen
+      referrerPolicy="strict-origin-when-cross-origin"
+      onLoad={onLoad}
+      className="absolute inset-0 size-full border-0"
+    />
+  );
+});
 
 export function GameFrame({
   state,
@@ -68,6 +88,11 @@ export function GameFrame({
   const mode: GameLaunchMode = state.target.mode;
   const title = state.target.game.title;
   const frameTitle = `${title} ${mode === 'demo' ? t('frameDemo') : t('frameReal')}`;
+  const onFrameLoadRef = useRef(onFrameLoad);
+  onFrameLoadRef.current = onFrameLoad;
+  const handleFrameLoad = useCallback(() => {
+    onFrameLoadRef.current(state.attempt);
+  }, [state.attempt]);
 
   useEffect(() => {
     if (state.status !== 'loading') return;
@@ -93,15 +118,11 @@ export function GameFrame({
   return (
     <div className="relative min-h-0 flex-1 bg-black">
       {launchUrl && (
-        <iframe
-          key={state.attempt}
+        <StableGameIframe
+          attempt={state.attempt}
           src={launchUrl}
           title={frameTitle}
-          allow="autoplay; fullscreen; encrypted-media"
-          allowFullScreen
-          referrerPolicy="strict-origin-when-cross-origin"
-          onLoad={() => onFrameLoad(state.attempt)}
-          className="absolute inset-0 size-full border-0"
+          onLoad={handleFrameLoad}
         />
       )}
       {state.status === 'launching' && (
@@ -116,13 +137,9 @@ export function GameFrame({
         <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
           <p
             role="status"
-            className="flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold shadow"
+            className="fade-enter flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold shadow-[var(--shadow-2)]"
           >
-            <LoaderCircle
-              aria-hidden
-              size={14}
-              className="animate-spin text-[var(--accent)] motion-reduce:animate-none"
-            />
+            <AlphaBetLoader size="sm" />
             {t('loading')}
           </p>
         </div>
@@ -131,7 +148,7 @@ export function GameFrame({
         <div className="absolute inset-x-3 bottom-3 flex justify-center">
           <div
             role="status"
-            className="flex w-full max-w-md flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-lg"
+            className="panel motion-enter flex w-full max-w-md flex-col gap-3 rounded-[var(--radius-md)] p-4 shadow-[var(--shadow-pop)]"
           >
             <div className="flex items-start gap-3">
               <CircleAlert aria-hidden size={20} className="mt-0.5 shrink-0 text-[var(--warning)]" />
@@ -144,7 +161,7 @@ export function GameFrame({
               <Button
                 type="button"
                 onClick={onRetry}
-                className="bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-3)]"
+                variant="secondary"
               >
                 <RotateCcw aria-hidden size={16} />
                 {t('reload')}
@@ -178,7 +195,7 @@ export function GameFrame({
           <Button
             type="button"
             onClick={onBackToLobby}
-            className="bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-3)]"
+            variant="secondary"
           >
             {t('backToLobby')}
           </Button>

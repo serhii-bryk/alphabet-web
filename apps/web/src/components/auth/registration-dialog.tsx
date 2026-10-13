@@ -17,7 +17,6 @@ import {
   Eye,
   EyeOff,
   Gift,
-  LoaderCircle,
 } from 'lucide-react';
 import type {
   RegistrationErrorCode,
@@ -32,8 +31,10 @@ import {
   validateRegistrationStep,
   type RegistrationFieldErrors,
 } from '@/data/registration-browser';
+import { AlphaBetLoader } from '../alphabet-loader';
 import { Button, IconButton } from '../ui';
 import { AuthDialog } from './auth-dialog';
+import { readRememberedIdentity, rememberIdentity } from './remembered-identity';
 import { applyAuthenticatedSession } from './session';
 
 const inputClass =
@@ -132,6 +133,15 @@ export function RegistrationDialog({
   const [showPassword, setShowPassword] = useState(false);
   const inflight = useRef(false);
   const queryClient = useQueryClient();
+  useEffect(() => {
+    const remembered = readRememberedIdentity();
+    if (!remembered.email && !remembered.country) return;
+    setInput((current) => ({
+      ...current,
+      email: current.email || remembered.email,
+      country: remembered.country || current.country,
+    }));
+  }, []);
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations('auth');
@@ -176,6 +186,7 @@ export function RegistrationDialog({
     setError(null);
     try {
       const result = await register(input);
+      rememberIdentity({ email: input.email, country: input.country });
       applyAuthenticatedSession(queryClient, result.session);
       onClose();
       if (pathname !== '/casino') router.push('/casino');
@@ -235,14 +246,15 @@ export function RegistrationDialog({
             <Button
               type="button"
               disabled={pending}
-              className="h-12 bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-3)]"
+              variant="secondary"
+              className="h-12"
               onClick={() => setStep(1)}
             >
               {t('back')}
             </Button>
           )}
           <Button type="submit" disabled={pending || !options} aria-busy={pending || undefined} className="h-12 flex-1 text-base">
-            {pending && <LoaderCircle aria-hidden size={18} className="animate-spin motion-reduce:animate-none" />}
+            {pending && <AlphaBetLoader size="sm" className="text-current" />}
             {pending ? t('creating') : step === 1 ? t('continue') : t('createAccount')}
           </Button>
         </div>

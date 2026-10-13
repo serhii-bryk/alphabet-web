@@ -1,10 +1,11 @@
 'use client';
-import { useId, useState, type FormEvent } from 'react';
+import { useEffect, useId, useState, type FormEvent } from 'react';
 import { useTranslations } from 'next-intl';
-import { LoaderCircle } from 'lucide-react';
 import { isValidLoginInput, type LoginErrorCode, type LoginInput } from '@/data/auth-browser';
+import { AlphaBetLoader } from '../alphabet-loader';
 import { Button } from '../ui';
 import { AuthDialog } from './auth-dialog';
+import { readRememberedIdentity } from './remembered-identity';
 
 const inputClass =
   'h-11 w-full rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--bg)] px-3 text-base text-[var(--text)] outline-none focus-visible:border-[var(--accent)] aria-[invalid=true]:border-[var(--danger)]';
@@ -26,6 +27,11 @@ export function LoginForm({
   const [invalid, setInvalid] = useState(false);
   const t = useTranslations('auth');
   const shownError: LoginErrorCode | null = invalid ? 'invalid_login' : error;
+
+  useEffect(() => {
+    const remembered = readRememberedIdentity();
+    if (remembered.email) setEmail((current) => current || remembered.email);
+  }, []);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -50,7 +56,7 @@ export function LoginForm({
           name="email"
           type="email"
           inputMode="email"
-          autoComplete="email"
+          autoComplete="username"
           autoCapitalize="none"
           spellCheck={false}
           required
@@ -88,7 +94,7 @@ export function LoginForm({
       )}
       <Button type="submit" disabled={pending} aria-busy={pending || undefined} className="h-11">
         {pending && (
-          <LoaderCircle aria-hidden size={16} className="animate-spin motion-reduce:animate-none" />
+          <AlphaBetLoader size="sm" className="text-current" />
         )}
         {pending ? t('signingIn') : t('signIn')}
       </Button>

@@ -72,17 +72,21 @@ export function GameLaunchProvider({
   authenticated = false,
   onAuthRequired = noop,
   onSessionEnded = noop,
+  onRealLaunch = noop,
 }: {
   children: ReactNode;
   launchers?: GameLaunchers;
   authenticated?: boolean;
   onAuthRequired?: (opener?: HTMLElement | null) => void;
   onSessionEnded?: () => void;
+  onRealLaunch?: () => void;
 }) {
   const sessionEndedRef = useRef(onSessionEnded);
+  const realLaunchRef = useRef(onRealLaunch);
   useEffect(() => {
     sessionEndedRef.current = onSessionEnded;
-  }, [onSessionEnded]);
+    realLaunchRef.current = onRealLaunch;
+  }, [onRealLaunch, onSessionEnded]);
   const [state, dispatch] = useReducer(workspaceReducer, initialWorkspaceState);
   const [browsing, setBrowsing] = useState(false);
   const stateRef = useRef(state);
@@ -119,6 +123,7 @@ export function GameLaunchProvider({
       launchers[target.mode](target.game.id, controller.signal).then(
         (response) => {
           if (controller.signal.aborted) return;
+          if (target.mode === 'real') realLaunchRef.current();
           dispatch({
             type: 'panel',
             id,
@@ -196,7 +201,7 @@ export function GameLaunchProvider({
         target,
         attempt,
         frame: defaultFrame(openIdsRef.current.size - 1),
-        presentation: desktop && !multi ? 'page' : 'floating',
+        presentation: desktop ? 'page' : 'floating',
       });
       setBrowsing(false);
       if (!isDesktopViewport() && historyEntryRef.current === null) {
@@ -271,7 +276,8 @@ export function GameLaunchProvider({
       return;
     }
     if (isDesktopViewport()) {
-      dispatch({ type: 'enterMultiGame' });
+      dispatch({ type: 'armMultiGame' });
+      setBrowsing(true);
       openCasinoGameSection(pathname, (href) => router.push(href));
       return;
     }
@@ -364,7 +370,7 @@ export function GameLaunchProvider({
           onLoadTimeout={onLoadTimeout}
           onSignIn={signIn}
           onFocus={onFocus}
-          onKeepOpen={() => dispatch({ type: 'enterMultiGame' })}
+          onKeepOpen={(id) => dispatch({ type: 'popOut', id })}
           onMinimize={(id) => dispatch({ type: 'minimize', id })}
           onMaximize={(id) => dispatch({ type: 'maximize', id })}
           onRestore={(id) => dispatch({ type: 'restore', id })}
@@ -396,7 +402,7 @@ function WorkspaceSession({
   onLoadTimeout: (id: string, attempt: number) => void;
   onSignIn: (id: string) => void;
   onFocus: (id: string) => void;
-  onKeepOpen: () => void;
+  onKeepOpen: (id: string) => void;
   onMinimize: (id: string) => void;
   onMaximize: (id: string) => void;
   onRestore: (id: string) => void;
