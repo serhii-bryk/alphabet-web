@@ -20,6 +20,16 @@ const paths: Record<SupportNavigateTarget, string> = {
   journal: '/journal',
 };
 
+export function visibleSupportActions(actions: SupportAction[], authenticated: boolean): SupportAction[] {
+  if (authenticated) return actions.filter((action) => action.type !== 'open_registration');
+  const guestActions = actions.map((action): SupportAction =>
+    action.type === 'open_cashier' ? { type: 'open_login' } : action,
+  );
+  return guestActions.filter(
+    (action, index) => action.type !== 'open_login' || guestActions.findIndex((item) => item.type === 'open_login') === index,
+  );
+}
+
 export function supportActionHref(action: Extract<SupportAction, { type: 'navigate' }>): string {
   const path = paths[action.target];
   if (!action.search) return path;

@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NextIntlClientProvider } from 'next-intl';
 import { describe, expect, it, vi } from 'vitest';
 
+const path = vi.hoisted(() => ({ current: '/casino' }));
+
 vi.mock('@/i18n/navigation', () => ({
   Link: ({
     href,
@@ -11,7 +13,7 @@ vi.mock('@/i18n/navigation', () => ({
     ...props
   }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children: ReactNode }) =>
     createElement('a', { href, ...props }, children),
-  usePathname: () => '/casino',
+  usePathname: () => path.current,
   useRouter: () => ({ push: () => undefined, replace: () => undefined }),
   redirect: () => undefined,
 }));
@@ -62,5 +64,31 @@ describe('header and side menu', () => {
     expect(aside).toContain('Light theme');
     expect(aside).toContain('Dark theme');
     expect(aside).toContain('System theme');
+  });
+
+  it('keeps one site header and places the footer after Sports content', () => {
+    path.current = '/sports';
+    const html = renderToStaticMarkup(
+      <QueryClientProvider client={new QueryClient()}>
+        <NextIntlClientProvider locale="en" messages={messages}>
+          <Shell>
+            <p>Sports room</p>
+          </Shell>
+        </NextIntlClientProvider>
+      </QueryClientProvider>,
+    );
+    path.current = '/casino';
+    const headers = html.match(/<header/g) ?? [];
+    const footers = html.match(/<footer/g) ?? [];
+    const main = slice(html, '<main', '</main>');
+
+    expect(html).toContain('shell-sports');
+    expect(headers).toHaveLength(1);
+    expect(footers).toHaveLength(1);
+    expect(main.indexOf('Sports room')).toBeGreaterThan(-1);
+    expect(main.indexOf('Sports room')).toBeLessThan(main.indexOf('<footer'));
+    expect(main).toContain('Casino, live tables, and sports');
+    expect(html).not.toContain('Create account');
+    expect(html).not.toContain('>Register<');
   });
 });

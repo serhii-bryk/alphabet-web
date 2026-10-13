@@ -118,11 +118,11 @@ export function Sportsbook({ path }: { path?: string }) {
     const onMessage = (event: MessageEvent) => {
       const action = acceptSportsbookMessage(event, origin);
       if (action === 'sign_in') openLogin();
-      if (action === 'sign_up') openRegistration();
+      if (action === 'sign_up' && status === 'guest') openRegistration();
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [launch, openLogin, openRegistration]);
+  }, [launch, openLogin, openRegistration, status]);
 
   const retry = () => {
     suppressGuestRef.current = false;

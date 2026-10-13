@@ -2,7 +2,10 @@
 
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
+import { GuestAcquisition } from './auth/guest-acquisition';
 import { Wordmark } from './wordmark';
+
+const footerLinkClass = 'text-sm font-semibold hover:text-[var(--accent-strong)]';
 
 export function SiteFooter() {
   const footer = useTranslations('footer');
@@ -51,13 +54,32 @@ export function SiteFooter() {
           <nav key={column.title} aria-label={column.title}>
             <h2 className="text-xs font-black uppercase tracking-[.16em] text-[var(--muted)]">{column.title}</h2>
             <ul className="mt-3 space-y-2">
-              {column.links.map((link) => (
-                <li key={link.href}>
-                  <Link href={link.href} className="text-sm font-semibold hover:text-[var(--accent-strong)]">
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
+              {column.links.map((link) =>
+                link.href === '/register' ? (
+                  <GuestAcquisition
+                    key={link.href}
+                    replacement={
+                      <li>
+                        <Link href="/account" className={footerLinkClass}>
+                          {nav('account')}
+                        </Link>
+                      </li>
+                    }
+                  >
+                    <li>
+                      <Link href={link.href} className={footerLinkClass}>
+                        {link.label}
+                      </Link>
+                    </li>
+                  </GuestAcquisition>
+                ) : (
+                  <li key={link.href}>
+                    <Link href={link.href} className={footerLinkClass}>
+                      {link.label}
+                    </Link>
+                  </li>
+                ),
+              )}
             </ul>
           </nav>
         ))}

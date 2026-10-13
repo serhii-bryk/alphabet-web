@@ -17,9 +17,14 @@ button, a { -webkit-tap-highlight-color: transparent; }
   display: flex;
   flex-direction: column;
   max-width: none;
-  height: calc(100dvh - var(--header-h) - var(--bottom-h));
   padding: 0;
-  overflow: hidden;
+}
+.shell-sports .main > footer { padding-inline: 1rem; }
+.sportsbook {
+  flex: none;
+  width: 100%;
+  height: calc(100dvh - var(--header-h) - var(--bottom-h) - 13rem);
+  min-height: 20rem;
 }
 /* Product-area atmosphere: a fixed, low-contrast layer behind content. */
 .shell { position: relative; isolation: isolate; --area-a: transparent; --area-b: transparent; --area-line: var(--line); }
@@ -286,6 +291,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 }
 @media (min-width: 640px) {
   .sports-hero { height: 11.5rem; }
+  .sportsbook { height: calc(100dvh - var(--header-h) - var(--bottom-h) - 16.25rem); }
 }
 @media (hover: hover) {
   .lobby-hero:hover .banner-photo,
@@ -742,7 +748,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .shell { padding-bottom: 0; padding-inline-start: 236px; }
   .shell.sidebar-collapsed { padding-inline-start: 76px; }
   .main { padding: 1.5rem 2rem 3rem; }
-  .shell-sports .main { height: calc(100dvh - var(--header-h)); padding: 0; }
+  .shell-sports .main { padding: 0; }
+  .shell-sports .main > footer { padding-inline: 2rem; }
+  .sportsbook { height: calc(100dvh - var(--header-h) - 12.75rem); min-height: 28rem; }
   .desktop-only { display: flex; } .mobile-only { display: none !important; }
   .desktop-only:empty { display: none; }
   .support-launcher { display: none; }

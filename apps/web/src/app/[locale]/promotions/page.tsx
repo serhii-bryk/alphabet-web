@@ -1,6 +1,6 @@
 import { getTranslations } from 'next-intl/server';
-import { Link } from '@/i18n/navigation';
 import { BrandBanner } from '@/components/brand-banner';
+import { PromotionsCta } from '@/components/promotions-cta';
 import { translatedMetadata } from '@/i18n/page-metadata';
 
 export function generateMetadata() {
@@ -32,9 +32,7 @@ export default async function Page() {
           </article>
         ))}
       </div>
-      <Link href="/register" className="mt-6 inline-flex h-11 items-center rounded-[var(--radius-md)] bg-[var(--accent)] px-4 text-sm font-black text-[var(--accent-contrast)]">
-        {t('joinNow')}
-      </Link>
+      <PromotionsCta />
     </section>
   );
 }

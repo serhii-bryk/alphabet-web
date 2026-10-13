@@ -6,6 +6,7 @@ import type { RegistrationCountry } from '@brand/contracts';
 import { Link } from '@/i18n/navigation';
 import { fetchRegistrationOptions } from '@/data/registration-browser';
 import { useAuthDialog } from './auth/auth-provider';
+import { GuestAcquisition } from './auth/guest-acquisition';
 import { readRememberedIdentity } from './auth/remembered-identity';
 import { useSession, type SessionStatus } from './auth/session';
 import { BrandBanner } from './brand-banner';
@@ -43,10 +44,14 @@ export function LobbyHero({ startId = 'casino' }: { startId?: string }) {
           <p className="mt-3 max-w-lg text-sm leading-relaxed text-[var(--muted)] sm:text-base">
             {heroBody(status, live, t)}
           </p>
-          {status === 'guest' && <GuestRegister />}
+          <GuestAcquisition>
+            <GuestRegister />
+          </GuestAcquisition>
           {status === 'authenticated' && <MemberActions live={live} />}
         </div>
-        {status === 'guest' && <GuestQuickForm />}
+        <GuestAcquisition>
+          <GuestQuickForm />
+        </GuestAcquisition>
       </div>
     </section>
   );

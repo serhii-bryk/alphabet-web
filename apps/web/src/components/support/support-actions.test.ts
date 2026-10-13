@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
-import { parseSupportAction, parseSupportReply, supportActionHref } from './actions';
+import { parseSupportAction, parseSupportReply, supportActionHref, visibleSupportActions } from './actions';
 import { buildHandoffSummary, readSupportSession, redactSensitive, writeSupportSession } from './storage';
 
 describe('support actions', () => {
@@ -19,6 +19,24 @@ describe('support actions', () => {
     });
     expect(parseSupportAction({ type: 'open_login' })).toEqual({ type: 'open_login' });
     expect(parseSupportAction({ type: 'open_registration' })).toEqual({ type: 'open_registration' });
+    expect(
+      visibleSupportActions(
+        [
+          { type: 'open_registration' },
+          { type: 'open_cashier', mode: 'deposit' },
+        ],
+        true,
+      ),
+    ).toEqual([{ type: 'open_cashier', mode: 'deposit' }]);
+    expect(
+      visibleSupportActions(
+        [
+          { type: 'open_registration' },
+          { type: 'open_cashier', mode: 'deposit' },
+        ],
+        false,
+      ),
+    ).toEqual([{ type: 'open_registration' }, { type: 'open_login' }]);
     expect(parseSupportAction({ type: 'open_human_support' })).toEqual({ type: 'open_human_support' });
     expect(parseSupportAction({ type: 'open_url', url: 'https://evil.example' })).toBeNull();
     expect(parseSupportAction({ type: 'navigate', target: 'casino', url: 'javascript:alert(1)' })).toBeNull();

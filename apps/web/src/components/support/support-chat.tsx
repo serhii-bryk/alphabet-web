@@ -24,7 +24,7 @@ import { isDesktopViewport } from '../game-launch/viewport';
 import { AlphaBetLoader, TypingDots } from '../alphabet-loader';
 import { startRouteProgress } from '../route-progress';
 import { Button } from '../ui';
-import { supportActionHref } from './actions';
+import { supportActionHref, visibleSupportActions } from './actions';
 import {
   buildHandoffSummary,
   clearSupportSession,
@@ -281,7 +281,10 @@ function SupportChatPanel({
       return;
     }
     if (action.type === 'open_login') openLogin(opener);
-    if (action.type === 'open_registration') openRegistration(opener);
+    if (action.type === 'open_registration') {
+      if (status === 'guest') openRegistration(opener);
+      return;
+    }
     if (action.type === 'open_human_support') setHandoff(true);
   };
 
@@ -389,7 +392,7 @@ function SupportChatPanel({
                 )}
                 {item.actions && item.actions.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {visibleActions(item.actions, status === 'authenticated').map((action, index) => (
+                    {visibleSupportActions(item.actions, status === 'authenticated').map((action, index) => (
                       <button
                         key={`${item.id}-${action.type}-${index}`}
                         type="button"
@@ -497,16 +500,6 @@ function SupportChatPanel({
         </section>
       )}
     </>
-  );
-}
-
-function visibleActions(actions: SupportAction[], authenticated: boolean): SupportAction[] {
-  if (authenticated) return actions;
-  const guestActions = actions.map((action): SupportAction =>
-    action.type === 'open_cashier' ? { type: 'open_login' } : action,
-  );
-  return guestActions.filter(
-    (action, index) => action.type !== 'open_login' || guestActions.findIndex((item) => item.type === 'open_login') === index,
   );
 }
 

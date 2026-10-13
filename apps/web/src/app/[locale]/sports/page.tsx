@@ -14,7 +14,7 @@ export default async function Page({
   const params = await searchParams;
   const path = typeof params.path === 'string' ? params.path : undefined;
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col">
+    <div className="flex w-full flex-col">
       <SportsHero />
       <Sportsbook path={path} />
     </div>

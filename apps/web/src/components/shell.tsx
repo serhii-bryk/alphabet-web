@@ -178,7 +178,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <ProductNav />
           </div>
           {children}
-          {!sports && <SiteFooter />}
+          <SiteFooter />
         </main>
         <nav
           aria-label={navT('mobile')}
