@@ -184,6 +184,7 @@ describe('deposit payments', () => {
         maxAmount: 500,
         fields: [{ name: 'cc', label: 'Card number', required: true }],
         test: false,
+        mock: false,
       },
     ]);
     expect(JSON.stringify(methodsBody)).not.toMatch(/https:|hash|checksum|submit/);
@@ -583,5 +584,109 @@ describe('test deposit', () => {
     );
     expect(retry.status).toBe(422);
     expect(calls(fetcher, '/transactions/deposit')).toHaveLength(1);
+  });
+});
+
+describe('development mock cashier', () => {
+  const mockEnv = {
+    ...baseEnv,
+    FINALPAY_URL: undefined,
+    FINALPAY_SECRET: undefined,
+    PAYMENTS_CALLBACK_BASE_URL: undefined,
+    PAYMENTS_MOCK_MODE: 'true',
+  };
+
+  it('requires a player session', async () => {
+    const { app } = makeApp(async () => new Response('unexpected', { status: 500 }), mockEnv);
+    const response = await app.request('/api/payments/methods');
+    expect(response.status).toBe(401);
+    expect((await response.json()).error.code).toBe('session_ended');
+  });
+
+  it('loads mock methods and keeps deposit and withdrawal pending', async () => {
+    const { app, fetcher } = makeApp(
+      async (input, init) => providerResponse(input, init) ?? new Response('unexpected', { status: 500 }),
+      mockEnv,
+    );
+    const cookie = await login(app);
+    const methods = await app.request('/api/payments/methods', authed(cookie));
+    const methodsBody = await methods.json();
+    expect(methods.status).toBe(200);
+    expect(methodsBody.depositMethods).toEqual([
+      { id: 'mock-card', label: 'Card', minAmount: 10, maxAmount: 500, fields: [], test: false, mock: true },
+    ]);
+    expect(methodsBody.withdrawMethods).toEqual([
+      {
+        id: 'mock-bank',
+        label: 'Bank transfer',
+        minAmount: 10,
+        maxAmount: null,
+        fields: [{ name: 'account', label: 'Account reference', required: true }],
+        test: false,
+        mock: true,
+      },
+    ]);
+    expect(JSON.stringify(methodsBody)).not.toMatch(/finalpay|secret|checksum|2616/);
+    const deposit = await app.request(
+      '/api/payments/deposit',
+      authed(cookie, { methodId: 'mock-card', amount: 20, idempotencyKey: crypto.randomUUID() }),
+    );
+    const depositBody = await deposit.json();
+    expect(deposit.status).toBe(200);
+    expect(depositBody.status).toBe('processing');
+    expect(depositBody.redirectUrl).toBeUndefined();
+    const status = await app.request(
+      `/api/payments/status?paymentId=${depositBody.paymentId}`,
+      authed(cookie),
+    );
+    expect(await status.json()).toEqual({ status: 'processing', direction: 'deposit' });
+    const withdraw = await app.request(
+      '/api/payments/withdraw',
+      authed(cookie, {
+        methodId: 'mock-bank',
+        amount: 15,
+        idempotencyKey: crypto.randomUUID(),
+        details: { account: 'dev-account' },
+      }),
+    );
+    expect((await withdraw.json()).status).toBe('processing');
+    const rejected = await app.request(
+      '/api/payments/withdraw',
+      authed(cookie, {
+        methodId: 'mock-bank',
+        amount: 150,
+        idempotencyKey: crypto.randomUUID(),
+        details: { account: 'dev-account' },
+      }),
+    );
+    expect((await rejected.json()).error.code).toBe('insufficient_balance');
+    expect(calls(fetcher, '/init')).toHaveLength(0);
+    expect(calls(fetcher, '/transactions/deposit')).toHaveLength(0);
+    expect(calls(fetcher, '/transactions/withdraw/request')).toHaveLength(0);
+  });
+
+  it('ignores mock mode in production and does not call a Cosmoswin FinalPay host', async () => {
+    const production = makeApp(
+      async (input, init) => providerResponse(input, init) ?? new Response('unexpected', { status: 500 }),
+      {
+        ...baseEnv,
+        NODE_ENV: 'production',
+        PAYMENTS_MOCK_MODE: 'true',
+        FINALPAY_URL: 'https://gamma.payment.cosmoswin.finalpay.app/api/',
+        FINALPAY_USER_PREFIX: '2616~',
+        FINALPAY_TRANSACTION_PREFIX: '99999',
+      },
+    );
+    const cookie = await login(production.app);
+    const methods = await production.app.request('/api/payments/methods', authed(cookie));
+    expect(methods.status).toBe(502);
+    expect(calls(production.fetcher, 'finalpay.app')).toHaveLength(0);
+    expect(calls(production.fetcher, '/init')).toHaveLength(0);
+    const deposit = await production.app.request(
+      '/api/payments/deposit',
+      authed(cookie, { methodId: 'mock-card', amount: 20, idempotencyKey: crypto.randomUUID() }),
+    );
+    expect((await deposit.json()).error.code).toBe('method_unavailable');
+    expect(calls(production.fetcher, '/transactions/deposit')).toHaveLength(0);
   });
 });

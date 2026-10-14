@@ -336,6 +336,7 @@ export function createApp(options: CreateAppOptions = {}) {
           providerConfigured: paymentsConfig.providerConfigured,
           testMode: paymentsConfig.testMode,
           testMaxAmount: paymentsConfig.testMaxAmount,
+          mockMode: paymentsConfig.mockMode,
         },
         { now },
       );

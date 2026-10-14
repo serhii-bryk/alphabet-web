@@ -155,6 +155,11 @@ export function CashierDialog({
                   onChange={() => setMethodId(method.id)}
                 />
                 <span className="min-w-0 flex-1">{method.label}</span>
+                {method.mock && (
+                  <span className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                    {t('mockOnly')}
+                  </span>
+                )}
                 {method.test && (
                   <span className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                     {t('testOnly')}
@@ -223,18 +228,12 @@ export function CashierDialog({
           )}
           {mutation.data?.status === 'processing' && (
             <p role="status" className="text-sm font-semibold">
-              {t('withdrawProcessing')}
+              {processingCopy(t, tab, selected?.mock === true)}
             </p>
           )}
           <Button type="submit" disabled={mutation.isPending} aria-busy={mutation.isPending || undefined}>
             {mutation.isPending && <AlphaBetLoader size="sm" className="text-current" />}
-            {mutation.isPending
-              ? t('submitting')
-              : tab === 'withdraw'
-                ? t('confirmWithdraw')
-                : selected?.test
-                  ? t('addTestFunds')
-                  : t('confirmDeposit')}
+            {mutation.isPending ? t('submitting') : submitLabel(t, tab, selected)}
           </Button>
         </form>
       )}
@@ -268,6 +267,18 @@ function limitCopy(t: CashierText, method: PaymentMethod): string {
   if (method.minAmount !== null) return t('minOnly', { min: method.minAmount });
   if (method.maxAmount !== null) return t('maxOnly', { max: method.maxAmount });
   return '';
+}
+
+function submitLabel(t: CashierText, tab: CashierTab, method: PaymentMethod | undefined): string {
+  if (method?.mock) return t(tab === 'withdraw' ? 'submitMockWithdraw' : 'openMockCheckout');
+  if (tab === 'withdraw') return t('confirmWithdraw');
+  if (method?.test) return t('addTestFunds');
+  return t('confirmDeposit');
+}
+
+function processingCopy(t: CashierText, tab: CashierTab, mock: boolean): string {
+  if (mock) return t(tab === 'withdraw' ? 'mockWithdrawPending' : 'mockDepositPending');
+  return t(tab === 'withdraw' ? 'withdrawProcessing' : 'depositPending');
 }
 
 function messageFor(t: CashierText, code: PaymentErrorCode): string {

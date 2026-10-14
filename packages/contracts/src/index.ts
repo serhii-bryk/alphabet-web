@@ -277,6 +277,7 @@ export interface PaymentMethod {
   maxAmount: number | null;
   fields: PaymentMethodField[];
   test: boolean;
+  mock: boolean;
 }
 
 export interface PaymentMethodsResponse {

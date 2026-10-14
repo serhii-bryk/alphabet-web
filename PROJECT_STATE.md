@@ -4,7 +4,7 @@ Source of truth for the current product. Read this before reconstructing history
 
 Update this file at the end of every completed milestone, and whenever an important architecture or integration decision changes. Record names and decisions only. Never store secrets, passwords, API keys, tokens, HMAC material, or personal test-account credentials.
 
-Last updated: 2026-10-14 (Telegram sign-in).
+Last updated: 2026-10-14 (development cashier mock).
 
 ## Product goal
 
@@ -49,7 +49,7 @@ Fast Development Mode, coordinated by `.cursor/agents/orchestrator.md`.
 - Game information under the focused or expanded game uses catalog fields the browser already receives: name, image, provider, categories, format, game type, RTP, volatility, demo availability, real-money availability, and listed time. Empty values are omitted. RTP and volatility are shown as Platform sent them. Provider game ids are not shown.
 - Login, logout, and an httpOnly session cookie. The Platform JWT stays on the server. Email and password stay the standard account path. Telegram Login Widget sign-in is added when `TELEGRAM_BOT_ID` is set: the browser sends the widget payload to the BFF, Platform verifies it and creates or reuses the player, and the BFF seals the same `brand_session`. A Telegram player may have no email. Google, phone/SMS, Facebook, and Apple are not shown as working sign-in methods.
 - Account profile and balance for the authenticated player.
-- Payments core: cashier deposit and withdrawal through the BFF. The browser never calls the payment provider or Platform directly. A confirmed deposit credits the wallet only from the BFF after a trusted captured callback. Test deposit is a separate guarded path. Transaction history is not built.
+- Payments core: cashier deposit and withdrawal through the BFF. The browser never calls the payment provider or Platform directly. A confirmed deposit credits the wallet only from the BFF after a trusted captured callback. Test deposit is a separate guarded path. Development mock Card and Bank transfer methods are a third path: they stay pending and do not move money. Transaction history is not built.
 - Registration UI and BFF: two-step signup. A successful Platform register is followed by the existing login flow, which seals the httpOnly session. Email verification is not required. One stage call with `SESSION_SECRET` set created an account, logged in, and returned an authenticated session while `emailVerified` was false. That call is not part of CI.
 - Player casino personalization stored on Platform. Favorites, last played, and most played use the sealed session player id. The browser calls `/api/player/favorites`, `/api/player/last-played`, and `/api/player/most-played` and never sends a player id. Favorites are the full Platform list. Last played and most played use Platform’s paginator (`page`, `limit`, `order`, and the confirmed date or count filters). Pages are `/favorites`, `/recently-played`, and `/most-played` (no locale prefix). Guests get the existing sign-in dialog from a heart and a sign-in prompt on those pages. Signed-in hearts are optimistic, shared across cards, game info, and the game toolbar, and roll back on failure. The default casino lobby shows compact Recently Played and Favorites rails, then the existing discovery grid, then Most Played. Empty rails stay hidden. A successful real launch refreshes last played and most played. Logout drops those caches.
 - In-product support chat. The browser calls `POST /api/support/chat` and `GET /api/support/channels`. The BFF calls the AI provider. Confirmed product facts live in `apps/bff/src/support/knowledge.ts`. Answers can include only the safe actions `navigate`, `open_cashier`, `open_login`, `open_registration`, and `open_human_support`. The active conversation is kept in `sessionStorage` (`alphabet.supportChat.v1`). English and Arabic are supported, and Arabic uses a right-to-left panel. Human handoff shows only configured contacts. Support cannot move money or change an account.
@@ -107,6 +107,7 @@ BFF:
 - `PAYMENTS_CALLBACK_BASE_URL` — public BFF origin with no path. Required before a real deposit or withdrawal can start. If it is missing, those requests return `provider_unavailable`.
 - `PAYMENTS_TEST_MODE` — exactly `true` to show Test Deposit. Ignored when `NODE_ENV` is `production`.
 - `PAYMENTS_TEST_MAX_AMOUNT` — optional, default 50. Non-positive values and values above 1000 fall back to 50.
+- `PAYMENTS_MOCK_MODE` — exactly `true` to show development Card and Bank transfer methods. Ignored when `NODE_ENV` is `production`. These methods do not call FinalPay and do not credit or reserve a wallet.
 - `SUPPORT_AI_PROVIDER` — optional, `openai` (default) or `anthropic`
 - `SUPPORT_AI_API_KEY` — required before the assistant can answer. If it is missing, chat returns `ai_unavailable` and human handoff still works
 - `SUPPORT_AI_MODEL` — optional. Defaults to `gpt-4o-mini` for OpenAI and `claude-haiku-4-5` for Anthropic
@@ -158,7 +159,7 @@ Web:
 
 ## Next recommended milestone
 
-Telegram sign-in is implemented against `POST /player/login/telegram`. It still needs a stage bot id, Platform login-method row, and BotFather domain before a live widget login can succeed. Phone/SMS and Google are blocked on missing Platform contracts, not on AlphaBet UI. Transaction history and sportsbook remain deferred.
+Telegram sign-in is implemented against `POST /player/login/telegram`. It still needs a stage bot id, Platform login-method row, and BotFather domain before a live widget login can succeed. Phone/SMS and Google are blocked on missing Platform contracts, not on AlphaBet UI. Deposit and Withdraw UI can be exercised with Test Deposit and the development mock cashier. A real FinalPay checkout is blocked until AlphaBet has an isolated provider tenant. Transaction history and sportsbook remain deferred.
 
 ## Payments
 
@@ -167,6 +168,12 @@ Browser routes, also registered with the `/api` prefix for direct tests: `GET /p
 The provider creates the hosted payment and reports state through the callback. Platform `POST /transactions/deposit` is the only ledger credit. Withdrawals reserve with `withdraw/request` before the provider call, then approve and confirm on capture, or roll back on failure. Provider ids, submit URLs, checksums, and withdrawal hashes stay on the server. Intents are kept in memory and in gitignored `apps/bff/data/payment-intents.json` so a callback can find them after a dev reload. Tests use an in-memory store.
 
 Test Deposit is not a provider method. It is added only when `PAYMENTS_TEST_MODE` is exactly `true` and `NODE_ENV` is not `production`. It credits with `POST /transactions/deposit` and rejects a second test credit for the same player within 15 seconds. A live provider deposit still needs `FINALPAY_URL`, `FINALPAY_SECRET`, and `PAYMENTS_CALLBACK_BASE_URL`.
+
+Cosmoswin Stage FinalPay is not a safe AlphaBet tenant. Its customer reference is the Cosmoswin prefix plus a Cosmoswin user id, its transaction references use Cosmoswin prefixes, and its callback credits the Cosmoswin cashier. AlphaBet players live on Cobraflux. Live FinalPay stays disabled when the URL host is `finalpay.app` or a subdomain, or when the user prefix is `2616~`, `2002~`, `test-`, or `cwtest-`, or when the transaction prefix is `99999`, `cwtest-`, or `test-`. Production also ignores `PAYMENTS_MOCK_MODE` and `PAYMENTS_TEST_MODE`.
+
+Development mock methods (`mock-card`, `mock-bank`) appear only when `PAYMENTS_MOCK_MODE` is exactly `true`, `NODE_ENV` is not `production`, and the live provider is not configured. Deposit and withdrawal both return `processing`. They do not redirect, do not call FinalPay, and do not call `POST /transactions/deposit` or `POST /transactions/withdraw/request`. The cashier labels them Development in English and Arabic. Amounts outside 10–500 on the mock card, a mock withdrawal above the Cobraflux balance, and a missing account reference are rejected. Closing the cashier or leaving the payment pending does not change the balance.
+
+Before production, AlphaBet needs its own FinalPay tenant, player prefix, transaction prefix, and callback host. Those must be confirmed to be isolated from Cosmoswin and Betfinal. Until then, do not set a `*.finalpay.app` URL or a Cosmoswin prefix in the BFF environment.
 
 ## Explicitly deferred
 

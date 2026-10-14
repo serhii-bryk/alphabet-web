@@ -57,6 +57,7 @@ const methodSchema = z.object({
     }),
   ),
   test: z.boolean(),
+  mock: z.boolean(),
 });
 
 const methodsResponseSchema = z.object({
