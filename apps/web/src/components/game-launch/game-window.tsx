@@ -12,7 +12,7 @@ import { FullscreenButton, ToolButton } from './game-toolbar';
 import type { Frame, GamePanel } from './workspace-state';
 
 const iconButton =
-  'window-control inline-grid size-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--muted)]';
+  'window-control inline-grid size-8 shrink-0 place-items-center rounded-[var(--radius-sm)] text-[var(--muted)]';
 
 interface GameWindowProps {
   panel: GamePanel;

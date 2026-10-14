@@ -14,10 +14,12 @@ export function LoginForm({
   pending,
   error,
   onSubmit,
+  onCreateAccount,
 }: {
   pending: boolean;
   error: LoginErrorCode | null;
   onSubmit: (input: LoginInput) => void;
+  onCreateAccount?: (opener: HTMLElement) => void;
 }) {
   const emailId = useId();
   const passwordId = useId();
@@ -98,6 +100,18 @@ export function LoginForm({
         )}
         {pending ? t('signingIn') : t('signIn')}
       </Button>
+      {onCreateAccount && (
+        <p className="text-center text-sm text-[var(--muted)]">
+          {t('newHere')}{' '}
+          <button
+            type="button"
+            className="font-bold text-[var(--text)] underline decoration-[var(--accent)] underline-offset-4"
+            onClick={(event) => onCreateAccount(event.currentTarget)}
+          >
+            {t('createAccount')}
+          </button>
+        </p>
+      )}
     </form>
   );
 }
@@ -108,19 +122,21 @@ export function LoginDialog({
   error,
   onSubmit,
   onClose,
+  onCreateAccount,
 }: {
   open: boolean;
   pending: boolean;
   error: LoginErrorCode | null;
   onSubmit: (input: LoginInput) => void;
   onClose: () => void;
+  onCreateAccount: (opener: HTMLElement) => void;
 }) {
   const t = useTranslations('auth');
   // Unmounting the form on close drops the typed password.
   if (!open) return null;
   return (
     <AuthDialog title={t('signInTitle')} description={t('signInDescription')} onClose={onClose}>
-      <LoginForm pending={pending} error={error} onSubmit={onSubmit} />
+      <LoginForm pending={pending} error={error} onSubmit={onSubmit} onCreateAccount={onCreateAccount} />
     </AuthDialog>
   );
 }

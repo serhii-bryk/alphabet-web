@@ -143,7 +143,9 @@ export function DepositButton({
       aria-label={compact ? t('deposit') : undefined}
       className="nav-item flex h-11 w-full items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-semibold"
     >
-      <WalletCards size={19} />
+      <span className="grid size-5 shrink-0 place-items-center">
+        <WalletCards size={18} aria-hidden />
+      </span>
       {!compact && t('deposit')}
     </button>
   );

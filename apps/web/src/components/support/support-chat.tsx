@@ -117,7 +117,9 @@ export function SupportMenuButton({
         openChat();
       }}
     >
-      <LifeBuoy size={19} />
+      <span className="grid size-5 shrink-0 place-items-center">
+        <LifeBuoy size={18} aria-hidden />
+      </span>
       {!compact && t('title')}
     </button>
   );

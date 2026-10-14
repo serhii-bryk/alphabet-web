@@ -93,7 +93,7 @@ export function OpenGamesBar({
                     aria-label={t('closeGame', { title })}
                     onClick={() => onClosePanel(panel.id)}
                     data-close=""
-                    className="window-control me-1 inline-grid size-8 items-center justify-center rounded-[var(--radius-sm)]"
+                    className="window-control me-1 inline-grid size-8 place-items-center rounded-[var(--radius-sm)]"
                   >
                     <X aria-hidden size={14} />
                   </button>
@@ -139,7 +139,7 @@ export function OpenGamesBar({
                     aria-label={t('closeGame', { title })}
                     onClick={() => onClosePanel(panel.id)}
                     data-close=""
-                    className="window-control me-1 inline-grid size-8 items-center justify-center rounded-[var(--radius-sm)]"
+                    className="window-control me-1 inline-grid size-8 place-items-center rounded-[var(--radius-sm)]"
                   >
                     <X aria-hidden size={14} />
                   </button>

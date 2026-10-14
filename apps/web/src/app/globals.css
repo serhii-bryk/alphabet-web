@@ -126,6 +126,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
   color: var(--muted);
   transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
+.game-tool > svg,
+.window-control > svg {
+  display: block;
+}
 .game-float-chrome .game-tool { width: 2rem; height: 2rem; }
 .game-tool:active { transform: scale(.92); }
 .game-tool:disabled { opacity: .45; cursor: not-allowed; }
@@ -383,7 +387,6 @@ button, a { -webkit-tap-highlight-color: transparent; }
   inset: 0;
   transition: transform var(--dur-slow) var(--ease-out);
 }
-.product-world-art { width: 100%; height: 100%; }
 .product-world-wash,
 .product-world-shade,
 .live-discovery-shade {
@@ -846,6 +849,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .shell-sports .main > footer { padding-inline: 2rem; }
   .sportsbook { height: calc(100dvh - var(--header-h) - var(--open-games-h) - 12.75rem); min-height: 28rem; }
   .desktop-only { display: flex; } .mobile-only { display: none !important; }
+  .game-tool.desktop-only { display: inline-grid; }
   .desktop-only:empty { display: none; }
   .support-launcher { display: none; }
   .support-panel {

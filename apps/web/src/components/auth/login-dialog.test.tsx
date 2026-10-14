@@ -19,17 +19,19 @@ describe('LoginDialog', () => {
   it('renders nothing while closed', () => {
     expect(
       renderUi(
-        <LoginDialog open={false} pending={false} error={null} onSubmit={noop} onClose={noop} />,
+        <LoginDialog open={false} pending={false} error={null} onSubmit={noop} onClose={noop} onCreateAccount={noop} />,
       ),
     ).toBe('');
   });
 
   it('renders a labelled modal with autocomplete-ready inputs', () => {
     const html = renderUi(
-      <LoginDialog open pending={false} error={null} onSubmit={noop} onClose={noop} />,
+      <LoginDialog open pending={false} error={null} onSubmit={noop} onClose={noop} onCreateAccount={noop} />,
     );
 
     expect(html).toContain('role="dialog"');
+    expect(html).toContain('New here?');
+    expect(html).toContain('>Create account<');
     expect(html).toContain('aria-modal="true"');
     expect(html).toMatch(/aria-labelledby="([^"]+)".*<h2 id="\1"[^>]*>Sign in<\/h2>/);
     expect(html).toMatch(/<label for="([^"]+)"[^>]*>Email<\/label><input id="\1"/);

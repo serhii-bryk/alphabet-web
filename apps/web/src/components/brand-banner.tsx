@@ -5,6 +5,7 @@ import Image from 'next/image';
 
 const sources = {
   casino: '/banners/casino.jpg',
+  slots: '/banners/slots.jpg',
   sports: '/banners/sports.jpg',
   promo: '/banners/promo.jpg',
   journal: '/banners/journal.jpg',
@@ -12,6 +13,7 @@ const sources = {
 
 const focus = {
   casino: 'object-[76%_36%] rtl:object-[24%_36%]',
+  slots: 'object-[62%_18%]',
   sports: 'object-[64%_40%] rtl:object-[36%_40%]',
   promo: 'object-[74%_center] rtl:object-[26%_center]',
   journal: 'object-[70%_center] rtl:object-[30%_center]',

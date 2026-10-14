@@ -126,6 +126,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error={error}
         onSubmit={submit}
         onClose={close}
+        onCreateAccount={() => {
+          reset();
+          setOpen(false);
+          setRegistrationPrefill(undefined);
+          setRegistrationNonce((current) => current + 1);
+          setRegistrationOpen(true);
+        }}
       />
       {registrationOpen && (
         <RegistrationDialog
