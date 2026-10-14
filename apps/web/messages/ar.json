@@ -316,6 +316,32 @@
     "rounds": "{count} جولات",
     "railError": "تعذر تحميل هذا الصف."
   },
+  "search": {
+    "dialogLabel": "البحث في AlphaBet",
+    "placeholder": "ابحث عن الألعاب والعروض والصفحات",
+    "close": "إغلاق البحث",
+    "open": "فتح البحث",
+    "games": "الألعاب",
+    "promotions": "العروض",
+    "pages": "الصفحات",
+    "categories": "التصنيفات",
+    "providers": "المزوّدون",
+    "loading": "جارٍ البحث في الألعاب",
+    "unavailable": "البحث غير متاح مؤقتًا. حاول مرة أخرى.",
+    "empty": "لا توجد نتائج لـ «{query}».",
+    "keepTyping": "اكتب حرفين على الأقل.",
+    "suggestions": "تصفح",
+    "results": "نتائج البحث",
+    "page": "صفحة",
+    "section": "قسم",
+    "promotion": "عرض",
+    "category": "تصنيف",
+    "provider": "مزوّد",
+    "casinoGame": "كازينو",
+    "play": "العب {title}",
+    "playDemo": "العب النسخة التجريبية من {title}",
+    "signIn": "سجّل الدخول للعب {title}"
+  },
   "pages": {
     "casinoHeading": "كازينو",
     "liveHeading": "الكازينو المباشر",
@@ -369,8 +395,8 @@
     "support3": "يبقى «تحدث مع شخص» متاحًا حتى إذا تعذر على المساعد الإجابة. تظهر بيانات الاتصال فقط عندما تكون مهيأة.",
     "accountEyebrow": "الحساب",
     "accountTitle": "حسابك",
-    "searchEyebrow": "الكتالوج",
-    "searchTitle": "البحث عن الألعاب"
+    "searchEyebrow": "بحث",
+    "searchTitle": "بحث"
   },
   "sportsbook": {
     "loading": "جارٍ فتح الرياضة…",

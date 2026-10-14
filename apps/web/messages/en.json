@@ -316,6 +316,32 @@
     "rounds": "{count} rounds",
     "railError": "Couldn’t load this row."
   },
+  "search": {
+    "dialogLabel": "Search AlphaBet",
+    "placeholder": "Search games, promotions, and pages",
+    "close": "Close search",
+    "open": "Open search",
+    "games": "Games",
+    "promotions": "Promotions",
+    "pages": "Pages",
+    "categories": "Categories",
+    "providers": "Providers",
+    "loading": "Searching games",
+    "unavailable": "Search is temporarily unavailable. Please try again.",
+    "empty": "No results for “{query}”.",
+    "keepTyping": "Type at least 2 characters.",
+    "suggestions": "Browse",
+    "results": "Search results",
+    "page": "Page",
+    "section": "Section",
+    "promotion": "Promotion",
+    "category": "Category",
+    "provider": "Provider",
+    "casinoGame": "Casino",
+    "play": "Play {title}",
+    "playDemo": "Play {title} demo",
+    "signIn": "Sign in to play {title}"
+  },
   "pages": {
     "casinoHeading": "Casino",
     "liveHeading": "Live Casino",
@@ -369,8 +395,8 @@
     "support3": "Talk to a person stays available even if the assistant cannot answer. Contact details are shown only when they are configured.",
     "accountEyebrow": "Account",
     "accountTitle": "Your account",
-    "searchEyebrow": "Catalog",
-    "searchTitle": "Search games"
+    "searchEyebrow": "Search",
+    "searchTitle": "Search"
   },
   "sportsbook": {
     "loading": "Opening sportsbook…",

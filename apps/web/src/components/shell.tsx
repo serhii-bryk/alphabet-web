@@ -22,6 +22,7 @@ import { LocaleSwitcher } from './locale-switcher';
 import { ThemeSwitcher } from './theme-switcher';
 import { Wordmark } from './wordmark';
 import { CommandSearch, SearchTrigger } from './search';
+import { SectionScroll } from './section-scroll';
 import { ConnectionStatus } from './connection-status';
 import { GameLaunchProvider } from './game-launch/provider';
 import { SupportChatProvider, SupportMenuButton } from './support/support-chat';
@@ -206,6 +207,7 @@ export function Shell({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
+        <SectionScroll />
         <CommandSearch />
         <ConnectionStatus />
       </div>

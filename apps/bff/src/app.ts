@@ -44,6 +44,18 @@ import { isSportsLaunchPath, registerSportsRoutes } from './sports-routes.js';
 import { readSupportChannels } from './support/channels.js';
 import { createSupportAiProvider, readSupportAiConfig, type SupportAiProvider } from './support/provider.js';
 import { isSupportPath, registerSupportRoutes, supportSecretValues } from './support-routes.js';
+import {
+  CATALOG_LIST_CACHE_MS,
+  SEARCH_CACHE_MAX,
+  SEARCH_CACHE_MS,
+  SEARCH_RATE_LIMIT,
+  SEARCH_RATE_WINDOW_MS,
+  createInflight,
+  createRateLimiter,
+  createResponseCache,
+  searchCacheKey,
+  searchClientKey,
+} from './catalog-guard.js';
 
 const providerSchema = z.object({
   id: z.string(),
@@ -116,7 +128,7 @@ const lobbyResponseSchema = z.object({
 const optionalText = z.string().trim().min(1).max(200).optional();
 const querySchema = z
   .object({
-    page: z.coerce.number().int().positive().optional(),
+    page: z.coerce.number().int().positive().max(1_000).optional(),
     limit: z.coerce.number().int().positive().max(100).optional(),
     per_page: z.coerce.number().int().positive().max(100).optional(),
     search: optionalText,
@@ -223,21 +235,62 @@ export function createApp(options: CreateAppOptions = {}) {
   app.get('/status', (c) => c.json({ service: 'bff', status: 'ready' }));
 
   const catalogRoutes = new Hono();
+  const searchLimiter = createRateLimiter(SEARCH_RATE_LIMIT, SEARCH_RATE_WINDOW_MS, now);
+  const searchCache = createResponseCache<unknown>(SEARCH_CACHE_MS, SEARCH_CACHE_MAX, now);
+  const listCache = createResponseCache<unknown>(CATALOG_LIST_CACHE_MS, 4, now);
+  const catalogInflight = createInflight<unknown>();
 
   catalogRoutes.get('/games', async (c) => {
     const query = querySchema.safeParse(parseQuery(c.req.url));
     if (!query.success) {
       return c.json(errorBody('invalid_query', 'Invalid catalog query'), 400);
     }
+    if (query.data.search) {
+      const client = searchClientKey((name) => c.req.header(name));
+      if (!searchLimiter.allow(`games:${client}`)) {
+        c.header('cache-control', 'no-store');
+        c.header('retry-after', '2');
+        return c.json(errorBody('rate_limited', 'Too many search requests. Please wait a moment.'), 429);
+      }
+      const key = searchCacheKey(query.data);
+      const cached = searchCache.get(key);
+      if (cached) {
+        c.header('cache-control', 'no-store');
+        return c.json(cached);
+      }
+      const body = await catalogInflight.run(key, async () => {
+        const parsed = gamesResponseSchema.parse(await catalog.listGames(query.data));
+        searchCache.set(key, parsed);
+        return parsed;
+      });
+      c.header('cache-control', 'no-store');
+      return c.json(body);
+    }
     return c.json(gamesResponseSchema.parse(await catalog.listGames(query.data)));
   });
 
   catalogRoutes.get('/providers', async (c) => {
-    return c.json(providersResponseSchema.parse(await catalog.listProviders()));
+    const key = 'providers';
+    const cached = listCache.get(key);
+    if (cached) return c.json(cached);
+    const body = await catalogInflight.run(key, async () => {
+      const parsed = providersResponseSchema.parse(await catalog.listProviders());
+      listCache.set(key, parsed);
+      return parsed;
+    });
+    return c.json(body);
   });
 
   catalogRoutes.get('/categories', async (c) => {
-    return c.json(categoriesResponseSchema.parse(await catalog.listCategories()));
+    const key = 'categories';
+    const cached = listCache.get(key);
+    if (cached) return c.json(cached);
+    const body = await catalogInflight.run(key, async () => {
+      const parsed = categoriesResponseSchema.parse(await catalog.listCategories());
+      listCache.set(key, parsed);
+      return parsed;
+    });
+    return c.json(body);
   });
 
   catalogRoutes.get('/lobby', async (c) => {

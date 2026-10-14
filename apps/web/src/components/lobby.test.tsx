@@ -284,5 +284,7 @@ describe('catalog lobby UI', () => {
     expect(worldMarkup).not.toContain('Promotions');
     expect(worldMarkup).not.toContain('Providers');
     expect(worldMarkup.match(/product-world-cta/g)).toHaveLength(3);
+    expect(worldMarkup).toContain('href="#games"');
+    expect(worldMarkup).toContain('product-world-slots');
   });
 });

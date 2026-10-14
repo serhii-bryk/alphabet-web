@@ -4,6 +4,7 @@ import { ArrowRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { BrandBanner } from './brand-banner';
+import { openCasinoGameSection } from './game-launch/casino-nav';
 
 const cardSizes = '(min-width: 1100px) 30vw, (min-width: 640px) 48vw, 84vw';
 
@@ -37,13 +38,9 @@ export function LobbyProductWorlds({ pathname }: { pathname: '/casino' | '/live-
         const current =
           (room.href === '/casino' && pathname === '/casino') ||
           (room.href === '/live-casino' && pathname === '/live-casino');
-        return (
-          <Link
-            key={room.id}
-            href={room.href}
-            aria-current={current ? 'page' : undefined}
-            className={`product-world product-world-${room.id}`}
-          >
+        const className = `product-world product-world-${room.id}`;
+        const copy = (
+          <>
             <span className="product-world-media">
               <RoomArt id={room.id} />
               <span className="product-world-wash" />
@@ -57,6 +54,27 @@ export function LobbyProductWorlds({ pathname }: { pathname: '/casino' | '/live-
                 <ArrowRight aria-hidden size={16} />
               </span>
             </span>
+          </>
+        );
+        if (room.href === '/casino' && pathname === '/casino') {
+          return (
+            <a
+              key={room.id}
+              href="#games"
+              aria-current="page"
+              className={className}
+              onClick={(event) => {
+                event.preventDefault();
+                openCasinoGameSection(pathname, () => undefined);
+              }}
+            >
+              {copy}
+            </a>
+          );
+        }
+        return (
+          <Link key={room.id} href={room.href} aria-current={current ? 'page' : undefined} className={className}>
+            {copy}
           </Link>
         );
       })}

@@ -840,7 +840,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
   margin-bottom: 1.25rem;
   overflow-x: auto;
 }
-.lobby-anchor { scroll-margin-top: calc(var(--header-h) + 5.5rem); }
+.lobby-anchor {
+  scroll-margin-top: calc(var(--header-h) + 5.5rem);
+  scroll-margin-bottom: var(--open-games-h);
+}
 @media (min-width: 1100px) {
   .shell { padding-bottom: 0; padding-inline-start: 236px; }
   .shell.sidebar-collapsed { padding-inline-start: 76px; }
