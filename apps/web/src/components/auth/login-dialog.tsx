@@ -6,6 +6,7 @@ import { AlphaBetLoader } from '../alphabet-loader';
 import { Button } from '../ui';
 import { AuthDialog } from './auth-dialog';
 import { readRememberedIdentity } from './remembered-identity';
+import { TelegramContinue } from './telegram-continue';
 
 const inputClass =
   'h-11 w-full rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--bg)] px-3 text-base text-[var(--text)] outline-none focus-visible:border-[var(--accent)] aria-[invalid=true]:border-[var(--danger)]';
@@ -15,11 +16,13 @@ export function LoginForm({
   error,
   onSubmit,
   onCreateAccount,
+  onTelegramAuthenticated,
 }: {
   pending: boolean;
   error: LoginErrorCode | null;
   onSubmit: (input: LoginInput) => void;
   onCreateAccount?: (opener: HTMLElement) => void;
+  onTelegramAuthenticated?: () => void;
 }) {
   const emailId = useId();
   const passwordId = useId();
@@ -49,6 +52,7 @@ export function LoginForm({
 
   return (
     <form noValidate onSubmit={submit} className="flex flex-col gap-4">
+      <TelegramContinue onAuthenticated={onTelegramAuthenticated} />
       <div className="flex flex-col gap-1.5">
         <label htmlFor={emailId} className="text-sm font-semibold">
           {t('email')}
@@ -123,6 +127,7 @@ export function LoginDialog({
   onSubmit,
   onClose,
   onCreateAccount,
+  onTelegramAuthenticated,
 }: {
   open: boolean;
   pending: boolean;
@@ -130,13 +135,20 @@ export function LoginDialog({
   onSubmit: (input: LoginInput) => void;
   onClose: () => void;
   onCreateAccount: (opener: HTMLElement) => void;
+  onTelegramAuthenticated: () => void;
 }) {
   const t = useTranslations('auth');
   // Unmounting the form on close drops the typed password.
   if (!open) return null;
   return (
     <AuthDialog title={t('signInTitle')} description={t('signInDescription')} onClose={onClose}>
-      <LoginForm pending={pending} error={error} onSubmit={onSubmit} onCreateAccount={onCreateAccount} />
+      <LoginForm
+        pending={pending}
+        error={error}
+        onSubmit={onSubmit}
+        onCreateAccount={onCreateAccount}
+        onTelegramAuthenticated={onTelegramAuthenticated}
+      />
     </AuthDialog>
   );
 }

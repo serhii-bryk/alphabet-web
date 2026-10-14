@@ -165,6 +165,9 @@
     "google": "Google",
     "apple": "Apple",
     "orContinue": "أو تابع عبر",
+    "orEmail": "أو استخدم البريد الإلكتروني",
+    "continueTelegram": "المتابعة عبر تيليغرام",
+    "telegramCancelled": "تم إلغاء تسجيل الدخول عبر تيليغرام.",
     "signIn": "تسجيل الدخول",
     "already": "لديك حساب؟",
     "welcomeOffer": "عرض الترحيب",
@@ -179,7 +182,10 @@
     "loginErrors": {
       "invalid_credentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
       "invalid_login": "أدخل بريدًا صالحًا وكلمة مرور من 8 أحرف على الأقل.",
-      "auth_unavailable": "تسجيل الدخول غير متاح. حاول مرة أخرى."
+      "auth_unavailable": "تسجيل الدخول غير متاح. حاول مرة أخرى.",
+      "external_auth_rejected": "لم يُقبل تسجيل الدخول عبر تيليغرام. حاول مرة أخرى.",
+      "external_auth_unavailable": "تسجيل الدخول عبر تيليغرام غير متاح. حاول مرة أخرى.",
+      "account_restricted": "لا يمكن لهذا الحساب تسجيل الدخول الآن."
     },
     "errors": {
       "invalid_registration": "راجع بياناتك وحاول مرة أخرى.",

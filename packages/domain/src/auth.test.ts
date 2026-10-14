@@ -39,6 +39,7 @@ function platform(overrides: Partial<PlatformClient> = {}): PlatformClient {
     launchRealGame: vi.fn(),
     requestSportsLaunchTicket: vi.fn(),
     login: vi.fn(async () => loginResult),
+    authenticateTelegram: vi.fn(),
     getProfile: vi.fn(async () => profileResult),
     getBalance: vi.fn(),
     deposit: vi.fn(),
@@ -264,6 +265,69 @@ describe('createAuthUseCases', () => {
 
     expect(result).toEqual({ action: 'keep', session: current });
     expect(client.refresh).toHaveBeenCalledOnce();
+  });
+
+  it('creates a session from a verified Telegram login, including a player with no email', async () => {
+    const payload = {
+      id: 900000001,
+      first_name: 'Telegram',
+      auth_date: 1_700_000_000,
+      hash: 'ab'.repeat(32),
+    };
+    const client = platform({
+      authenticateTelegram: vi.fn(async () => ({
+        ...loginResult,
+        profile: { ...loginResult.profile, email: null },
+      })),
+      getProfile: vi.fn(async () => ({
+        profile: { ...profileResult.profile, email: null },
+      })),
+    });
+
+    const result = await createAuthUseCases(client, { now: () => start }).loginWithTelegram({
+      payload,
+      ipNumber: '203.0.113.10',
+      browser: 'Browser',
+      domain: 'http://localhost:3000',
+    });
+
+    expect(client.authenticateTelegram).toHaveBeenCalledExactlyOnceWith({
+      payload,
+      ipNumber: '203.0.113.10',
+      browser: 'Browser',
+      domain: 'http://localhost:3000',
+    });
+    expect(result).toEqual({
+      accessToken: 'login-access-token',
+      playerId: '42',
+      email: null,
+      currency: 'EUR',
+      expiresAt: new Date(start + 3_600_000).toISOString(),
+    });
+  });
+
+  it.each([
+    [new PlatformClientError('request_failed', 401, 'invalid_login_method_authentication'), 'external_auth_rejected'],
+    [new PlatformClientError('request_failed', 404, 'login_method_not_found'), 'external_auth_unavailable'],
+    [new PlatformClientError('request_failed', 403, 'login_method_unavailable'), 'external_auth_unavailable'],
+    [new PlatformClientError('request_failed', 422, 'login_method_credentials_missing'), 'external_auth_unavailable'],
+    [new PlatformClientError('request_failed', 403, 'player_has_excluded'), 'account_restricted'],
+    [new PlatformClientError('request_failed', 403, 'player_login_unavailable'), 'account_restricted'],
+    [new PlatformClientError('request_failed', 500), 'external_auth_unavailable'],
+  ] as const)('maps Telegram failure %s to %s', async (failure, code) => {
+    const client = platform({
+      authenticateTelegram: vi.fn(async () => {
+        throw failure;
+      }),
+    });
+    const error: unknown = await createAuthUseCases(client)
+      .loginWithTelegram({
+        payload: { id: 1, auth_date: 1_700_000_000, hash: 'ab'.repeat(32) },
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(error).toMatchObject({ code });
+    expect(client.getProfile).not.toHaveBeenCalled();
   });
 
   it('logs out the session player and treats platform failures as local success', async () => {

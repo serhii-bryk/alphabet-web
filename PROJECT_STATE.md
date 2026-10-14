@@ -4,7 +4,7 @@ Source of truth for the current product. Read this before reconstructing history
 
 Update this file at the end of every completed milestone, and whenever an important architecture or integration decision changes. Record names and decisions only. Never store secrets, passwords, API keys, tokens, HMAC material, or personal test-account credentials.
 
-Last updated: 2026-10-13 (promotions page, banner motion).
+Last updated: 2026-10-14 (Telegram sign-in).
 
 ## Product goal
 
@@ -47,7 +47,7 @@ Fast Development Mode, coordinated by `.cursor/agents/orchestrator.md`.
 - Guest demo play is timed in the browser (`alphabet.demoPlay.v1`). Defaults are 10 minutes for the soft prompt and 20 minutes for the stronger prompt. `NEXT_PUBLIC_DEMO_PROMPT_SOFT_MS` / `NEXT_PUBLIC_DEMO_PROMPT_STRONG_MS`, and non-production `demoSoftMs` / `demoStrongMs` query params, override them. Register and Sign in open the existing dialogs. Dismiss leaves the game running. An authenticated session stops the prompts.
 - In-game Deposit opens the existing cashier above the workspace. The game iframe stays mounted. A successful deposit refreshes the existing account balance query. Test Deposit stays available when `PAYMENTS_TEST_MODE=true`.
 - Game information under the focused or expanded game uses catalog fields the browser already receives: name, image, provider, categories, format, game type, RTP, volatility, demo availability, real-money availability, and listed time. Empty values are omitted. RTP and volatility are shown as Platform sent them. Provider game ids are not shown.
-- Login, logout, and an httpOnly session cookie. The Platform JWT stays on the server.
+- Login, logout, and an httpOnly session cookie. The Platform JWT stays on the server. Email and password stay the standard account path. Telegram Login Widget sign-in is added when `TELEGRAM_BOT_ID` is set: the browser sends the widget payload to the BFF, Platform verifies it and creates or reuses the player, and the BFF seals the same `brand_session`. A Telegram player may have no email. Google, phone/SMS, Facebook, and Apple are not shown as working sign-in methods.
 - Account profile and balance for the authenticated player.
 - Payments core: cashier deposit and withdrawal through the BFF. The browser never calls the payment provider or Platform directly. A confirmed deposit credits the wallet only from the BFF after a trusted captured callback. Test deposit is a separate guarded path. Transaction history is not built.
 - Registration UI and BFF: two-step signup. A successful Platform register is followed by the existing login flow, which seals the httpOnly session. Email verification is not required. One stage call with `SESSION_SECRET` set created an account, logged in, and returned an authenticated session while `emailVerified` was false. That call is not part of CI.
@@ -67,6 +67,7 @@ All paths are under the configured `/api/v1` base.
 - `GET /countries`, `GET /currencies`
 - `POST /player/register`
 - `POST /player/login`
+- `POST /player/login/telegram` with `{ flow: "login_widget", payload }` — verified Telegram Login Widget only. Platform creates the player and wallets on the first accepted login, then returns the same auth session as password login (`profile`, `access_token`, `token_type`, `expires_in`). A later login with the same Telegram user id reuses that player. The payload hash is verified by Platform with the bot token. AlphaBet rejects a payload older than 24 hours, or more than 60 seconds in the future, before that call.
 - `POST /player/:id/refresh`, `POST /player/:id/logout`
 - `GET /player/:id/profile`, `GET /player/:id/balance`
 - `GET /games`, `GET /games/providers`, `GET /games/categories`
@@ -114,6 +115,7 @@ BFF:
 - `SUPPORT_TELEGRAM_URL` — optional `https` Telegram link
 - `SUPPORT_WHATSAPP_URL` — optional `https` WhatsApp link
 - `SUPPORT_HELPDESK_URL` — optional `https` helpdesk link
+- `TELEGRAM_BOT_ID` — optional public numeric bot id, digits only. This is not the bot token. When it is missing or invalid, Telegram sign-in is hidden. Platform must have the `telegram` login method enabled, the `login_widget` flow on, and the bot token configured. The bot domain in BotFather must match `WEB_ORIGIN`.
 
 Web:
 
@@ -126,12 +128,15 @@ Web:
 
 - Sportsbook is not integrated. Promotions are not a real offer system.
 - Registration’s public errors stay coarse on purpose. Upstream detail is only in the server log described below.
-- Social sign-in is not implemented.
+- Phone/SMS registration is not available. `POST /player/register` still requires email, password, and the full profile. Platform has no SMS OTP generate, send, or verify API.
+- Google sign-in is not available. `config/login_methods.php` registers only the Telegram driver. There is no Google OAuth/OIDC driver or partner endpoint.
+- Facebook sign-in is not available. There is no Facebook driver, route, or credential contract.
+- Telegram does not supply a verified email or phone. Platform stores a null email and null password and does not collect date of birth or country on this path. AlphaBet does not invent those fields and does not merge the Telegram player with an email account. Cool-off, self-exclusion, blocked, and inactive still reject login. A cashier call for a player with no email sends an empty email because that is what Platform stored.
 
 ## Current test setup
 
 - Vitest for domain, platform, BFF, and browser-contract tests. Platform `fetch` is faked.
-- Playwright in `apps/web/e2e` for registration, auth, and demo launch, against a fixture BFF.
+- Playwright in `apps/web/e2e` for registration, auth, Telegram sign-in, and demo launch, against a fixture BFF. Telegram tests mock the widget script and never call Telegram or Platform.
 - Commands from `new-brand-test`: `pnpm test`, `pnpm typecheck`, `pnpm lint`, and `pnpm --filter @brand/web test:e2e`.
 - One manual stage registration with `SESSION_SECRET` set created an account and an authenticated session without email verification. That call is not part of CI.
 
@@ -153,7 +158,7 @@ Web:
 
 ## Next recommended milestone
 
-Casino personalization is in place. Transaction history is still deferred. Do not start another milestone until that is explicitly requested. A stage login with the stored test account was rejected as invalid credentials on 2026-10-13, so add, remove, and play-history were not confirmed against live Platform data. Email verification is not the next milestone.
+Telegram sign-in is implemented against `POST /player/login/telegram`. It still needs a stage bot id, Platform login-method row, and BotFather domain before a live widget login can succeed. Phone/SMS and Google are blocked on missing Platform contracts, not on AlphaBet UI. Transaction history and sportsbook remain deferred.
 
 ## Payments
 
@@ -167,7 +172,8 @@ Test Deposit is not a provider method. It is added only when `PAYMENTS_TEST_MODE
 
 - Transaction history.
 - Sportsbook provider integration.
-- Google and Apple sign-in.
+- Google, Apple, Facebook, and phone/SMS sign-in. They need Platform drivers that are not in this repo.
+- Telegram Mini App (`flow: "mini_app"`). The website uses the login widget only.
 - CMS-managed promotions or casino catalog.
 - EveryMatrix and any legacy brand switch.
 - Production deployment and a public registration error-contract redesign.

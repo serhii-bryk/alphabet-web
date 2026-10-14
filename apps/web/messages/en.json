@@ -163,6 +163,9 @@
     "createAccount": "Create account",
     "creating": "Creating account…",
     "orContinue": "or continue with",
+    "orEmail": "or use email",
+    "continueTelegram": "Continue with Telegram",
+    "telegramCancelled": "Telegram sign-in was cancelled.",
     "google": "Google",
     "apple": "Apple",
     "signIn": "Sign in",
@@ -179,7 +182,10 @@
     "loginErrors": {
       "invalid_credentials": "The email or password is incorrect.",
       "invalid_login": "Enter a valid email and a password of at least 8 characters.",
-      "auth_unavailable": "Sign-in is unavailable. Please try again."
+      "auth_unavailable": "Sign-in is unavailable. Please try again.",
+      "external_auth_rejected": "Telegram sign-in was not accepted. Try again.",
+      "external_auth_unavailable": "Telegram sign-in is unavailable. Please try again.",
+      "account_restricted": "This account cannot sign in right now."
     },
     "errors": {
       "invalid_registration": "Check your details and try again.",

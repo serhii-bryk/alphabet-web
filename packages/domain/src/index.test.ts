@@ -26,6 +26,7 @@ function makePlatform(launchDemoGame: PlatformClient['launchDemoGame']): Platfor
     launchRealGame: vi.fn(),
     requestSportsLaunchTicket: vi.fn(),
     login: vi.fn(),
+    authenticateTelegram: vi.fn(),
     refresh: vi.fn(),
     logout: vi.fn(),
     getProfile: vi.fn(),

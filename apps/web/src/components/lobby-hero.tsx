@@ -6,6 +6,7 @@ import type { RegistrationCountry } from '@brand/contracts';
 import { Link } from '@/i18n/navigation';
 import { fetchRegistrationOptions } from '@/data/registration-browser';
 import { useAuthDialog } from './auth/auth-provider';
+import { TelegramContinue } from './auth/telegram-continue';
 import { GuestAcquisition } from './auth/guest-acquisition';
 import { readRememberedIdentity } from './auth/remembered-identity';
 import { useSession, type SessionStatus } from './auth/session';
@@ -161,6 +162,7 @@ function GuestQuickForm() {
     <div className="relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[color-mix(in_srgb,var(--surface)_88%,transparent)] p-4 shadow-[var(--shadow-2)] backdrop-blur-md sm:p-5">
       <span aria-hidden className="absolute -end-8 -top-10 size-28 rounded-full bg-[var(--accent)] opacity-20" />
       <div className="relative">
+        <TelegramContinue emailDivider={false} />
         <p className="text-xs font-black uppercase tracking-[.14em] text-[var(--muted)]">{t('orStart')}</p>
         <div className="mt-3 grid gap-3">
           <label htmlFor={emailId} className="grid gap-1 text-xs font-bold">
@@ -251,27 +253,8 @@ function GuestQuickForm() {
             {t('continue')}
           </button>
         </div>
-        <div className="mt-4 grid grid-cols-3 gap-2" role="group" aria-label={t('moreWays')}>
-          <SoonButton label={t('google')} soon={t('comingSoon', { label: t('google') })} hint={t('soon')} />
-          <SoonButton label={t('apple')} soon={t('comingSoon', { label: t('apple') })} hint={t('soon')} />
-          <SoonButton label={t('phone')} soon={t('comingSoon', { label: t('phone') })} hint={t('soon')} />
-        </div>
       </div>
     </div>
-  );
-}
-
-function SoonButton({ label, soon, hint }: { label: string; soon: string; hint: string }) {
-  return (
-    <button
-      type="button"
-      disabled
-      aria-label={soon}
-      className="inline-flex h-11 min-h-11 flex-col items-center justify-center rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--bg)] px-2 text-sm font-bold leading-none text-[var(--text)] opacity-70"
-    >
-      {label}
-      <span className="mt-1 text-[10px] font-black uppercase tracking-wide text-[var(--muted)]">{hint}</span>
-    </button>
   );
 }
 

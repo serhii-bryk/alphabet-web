@@ -1,5 +1,6 @@
 import { createElement, type AnchorHTMLAttributes, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NextIntlClientProvider } from 'next-intl';
 import { describe, expect, it, vi } from 'vitest';
 import type { CatalogGame, CatalogLobbyResponse } from '@brand/contracts';
@@ -31,9 +32,11 @@ import { CatalogErrorState, catalogPageItems, LobbyLoading, LobbyView } from './
 
 function renderLobby(node: ReactNode) {
   return renderToStaticMarkup(
-    <NextIntlClientProvider locale="en" messages={messages}>
-      {node}
-    </NextIntlClientProvider>,
+    <QueryClientProvider client={new QueryClient()}>
+      <NextIntlClientProvider locale="en" messages={messages}>
+        {node}
+      </NextIntlClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -185,9 +188,7 @@ describe('catalog lobby UI', () => {
     expect(empty).not.toContain('href="/register"');
     expect(empty).not.toContain('Join now');
     expect(empty).toContain('>Register<');
-    expect(empty).toContain('aria-label="Google, Coming soon"');
-    expect(empty).toContain('aria-label="Apple, Coming soon"');
-    expect(empty).toContain('aria-label="Phone, Coming soon"');
+    expect(empty).not.toContain('Coming soon');
     expect(empty).toContain('href="/casino"');
     expect(empty).toContain('href="/sports"');
   });

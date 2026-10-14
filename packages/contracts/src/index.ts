@@ -161,7 +161,7 @@ export interface GameLaunchErrorResponse {
 export interface AuthSession {
   authenticated: true;
   playerId: string;
-  email: string;
+  email: string | null;
   currency: string | null;
   expiresAt: string; // ISO
 }
@@ -176,7 +176,10 @@ export type AuthErrorCode =
   | 'invalid_credentials'
   | 'invalid_login'
   | 'auth_unavailable'
-  | 'session_ended';
+  | 'session_ended'
+  | 'external_auth_rejected'
+  | 'external_auth_unavailable'
+  | 'account_restricted';
 
 export interface AuthErrorResponse {
   error: { code: AuthErrorCode; message: string };
@@ -184,7 +187,7 @@ export interface AuthErrorResponse {
 
 export interface PlayerProfile {
   playerId: string;
-  email: string;
+  email: string | null;
   firstName: string;
   lastName: string;
   currency: string | null;

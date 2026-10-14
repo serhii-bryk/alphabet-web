@@ -107,7 +107,13 @@ export interface GameLaunchUseCases {
 export { AccountError, createAccountUseCases } from './account.js';
 export type { AccountUseCases } from './account.js';
 export { AuthError, createAuthUseCases, toAuthSession } from './auth.js';
-export type { AuthUseCases, LoginCommand, PlayerSession, RefreshIfNeededResult } from './auth.js';
+export type {
+  AuthUseCases,
+  LoginCommand,
+  PlayerSession,
+  RefreshIfNeededResult,
+  TelegramLoginCommand,
+} from './auth.js';
 export { createRegistrationUseCases, RegistrationError } from './registration.js';
 export {
   createMemoryPaymentIntentStore,

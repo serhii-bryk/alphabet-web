@@ -61,7 +61,7 @@ function ProfilePanel() {
           <Field label={t('name')}>
             {`${profile.data.firstName} ${profile.data.lastName}`.trim() || '—'}
           </Field>
-          <Field label={t('email')}>{profile.data.email}</Field>
+          <Field label={t('email')}>{profile.data.email ?? '—'}</Field>
           <Field label={t('currency')}>{profile.data.currency ?? '—'}</Field>
           <Field label={t('country')}>{profile.data.countryCode ?? '—'}</Field>
           <Field label={t('emailVerified')}>{profile.data.emailVerified ? t('yes') : t('no')}</Field>

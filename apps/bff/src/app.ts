@@ -19,7 +19,13 @@ import { cors } from 'hono/cors';
 import { z } from 'zod';
 import { isAccountPath, registerAccountRoutes } from './account-routes.js';
 import { isPersonalizationPath, registerPersonalizationRoutes } from './personalization-routes.js';
-import { applyResolvedSession, isAuthPath, registerAuthRoutes, resolvePlayerSession } from './auth-routes.js';
+import {
+  applyResolvedSession,
+  isAuthPath,
+  readTelegramBotId,
+  registerAuthRoutes,
+  resolvePlayerSession,
+} from './auth-routes.js';
 import { createFinalpayClient } from './finalpay.js';
 import { createFilePaymentIntentStore } from './payment-intents.js';
 import { isPaymentCallbackPath, isPaymentPath, registerPaymentRoutes } from './payment-routes.js';
@@ -207,6 +213,7 @@ export function createApp(options: CreateAppOptions = {}) {
     secret: readSessionSecret(env),
     webOrigin,
     now,
+    telegramBotId: readTelegramBotId(env),
     inflight,
   };
   const app = new Hono();

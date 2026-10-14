@@ -72,17 +72,19 @@ function LogoutButton({ className = '' }: { className?: string }) {
   );
 }
 
-function AccountLink({ email, onNavigate }: { email: string; onNavigate?: () => void }) {
+function AccountLink({ email, onNavigate }: { email: string | null; onNavigate?: () => void }) {
   const t = useTranslations('shell');
+  const account = useTranslations('nav');
+  const label = email ?? account('account');
   return (
     <Link
       href="/account"
       onClick={onNavigate}
-      aria-label={t('accountFor', { email })}
+      aria-label={email ? t('accountFor', { email }) : account('account')}
       className="pressable inline-flex h-10 min-w-0 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-semibold hover:border-[var(--accent-line)] hover:bg-[var(--surface-2)]"
     >
       <UserRound aria-hidden size={16} className="shrink-0 text-[var(--accent)]" />
-      <span className="max-w-[160px] truncate">{email}</span>
+      <span className="max-w-[160px] truncate">{label}</span>
     </Link>
   );
 }

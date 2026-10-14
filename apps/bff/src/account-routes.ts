@@ -16,7 +16,7 @@ const accountMessages = {
 
 const profileResponseSchema = z.object({
   playerId: z.string(),
-  email: z.string(),
+  email: z.string().min(1).nullable(),
   firstName: z.string(),
   lastName: z.string(),
   currency: z.string().nullable(),

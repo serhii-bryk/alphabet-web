@@ -29,6 +29,7 @@ function platform(overrides: Partial<PlatformClient> = {}): PlatformClient {
     launchRealGame: vi.fn(),
     requestSportsLaunchTicket: vi.fn(),
     login: vi.fn(),
+    authenticateTelegram: vi.fn(),
     refresh: vi.fn(),
     logout: vi.fn(),
     getProfile: vi.fn(async () => ({
