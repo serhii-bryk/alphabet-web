@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import type { GameLaunchErrorCode } from '@brand/contracts';
+import type { GameLaunchErrorCode, SupportCatalogGame } from '@brand/contracts';
 import type { AccountUseCases, AuthUseCases, CatalogUseCases, GameLaunchUseCases, PaymentIntentStore, PaymentUseCases, PersonalizationUseCases, RefreshIfNeededResult, RegistrationUseCases, SportsLaunchUseCases } from '@brand/domain';
 import {
   createAccountUseCases,
@@ -42,7 +42,9 @@ import {
 } from './session-cookie.js';
 import { isSportsLaunchPath, registerSportsRoutes } from './sports-routes.js';
 import { readSupportChannels } from './support/channels.js';
-import { createSupportAiProvider, readSupportAiConfig, type SupportAiProvider } from './support/provider.js';
+import { createFileAiBudget, createMemoryAiBudget, type AiBudgetStore } from './support/budget.js';
+import { readAiChatLimits, readOpenAiLiveConfig } from './support/limits.js';
+import { createSupportAiProvider, type SupportAiProvider } from './support/provider.js';
 import { isSupportPath, registerSupportRoutes, supportSecretValues } from './support-routes.js';
 import {
   CATALOG_LIST_CACHE_MS,
@@ -190,6 +192,7 @@ export interface CreateAppOptions {
   intentStore?: PaymentIntentStore;
   payments?: PaymentUseCases;
   supportAi?: SupportAiProvider | null;
+  supportBudget?: AiBudgetStore;
 }
 
 export function createApp(options: CreateAppOptions = {}) {
@@ -408,19 +411,34 @@ export function createApp(options: CreateAppOptions = {}) {
     webOrigin,
     now,
   });
-  const supportConfig = options.supportAi === undefined ? readSupportAiConfig(env) : null;
+  const limits = readAiChatLimits(env);
+  const liveOpenAi = options.supportAi === undefined ? readOpenAiLiveConfig(env) : null;
   const supportAi =
     options.supportAi !== undefined
       ? options.supportAi
-      : supportConfig
-        ? createSupportAiProvider(supportConfig, options.fetch ?? globalThis.fetch)
+      : liveOpenAi
+        ? createSupportAiProvider(liveOpenAi, options.fetch ?? globalThis.fetch)
         : null;
+  const modelEnabled =
+    options.supportAi !== undefined
+      ? env.AI_CHAT_ENABLED === 'true' && env.NODE_ENV !== 'production'
+      : liveOpenAi !== null;
+  const supportBudget =
+    options.supportBudget ??
+    (process.env.NODE_ENV === 'test'
+      ? createMemoryAiBudget(limits)
+      : createFileAiBudget(fileURLToPath(new URL('../data/ai-budget.json', import.meta.url)), limits));
   registerSupportRoutes(app, {
-    webOrigin,
+    ...sessionDependencies,
     ai: supportAi,
+    modelEnabled,
+    limits,
+    budget: supportBudget,
     channels: readSupportChannels(env),
     testDepositAvailable: paymentsConfig.testMode,
     secrets: supportSecretValues(env),
+    searchGames: (query) => searchSupportGames(catalog, query),
+    getAccount,
   });
 
   app.onError((_error, c) => {
@@ -526,4 +544,37 @@ export function createApp(options: CreateAppOptions = {}) {
   });
 
   return app;
+}
+
+async function searchSupportGames(catalog: CatalogUseCases, query: string): Promise<SupportCatalogGame[]> {
+  const parsed = gamesResponseSchema.parse(await catalog.listGames({ search: query, page: 1, perPage: 8 }));
+  return parsed.games
+    .flatMap((game) => {
+      if (!/^[1-9]\d{0,11}$/.test(game.id) || game.active === false) return [];
+      const title = game.title.replace(/\s+/g, ' ').trim().slice(0, 120);
+      const slug = game.slug.trim().slice(0, 200);
+      if (!title || !slug) return [];
+      return [
+        {
+          id: game.id,
+          slug,
+          title,
+          kind: game.kind,
+          imageUrl: httpsImage(game.imageUrl),
+          demoPlayEnabled: game.demoPlayEnabled,
+          active: true,
+        },
+      ];
+    })
+    .slice(0, 8);
+}
+
+function httpsImage(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }

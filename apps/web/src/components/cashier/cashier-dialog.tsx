@@ -17,10 +17,12 @@ export type CashierTab = 'deposit' | 'withdraw';
 
 export function CashierDialog({
   initialTab,
+  initialAmount = '',
   returnStatus,
   onClose,
 }: {
   initialTab: CashierTab;
+  initialAmount?: string;
   returnStatus: PaymentStatusResponse | 'loading' | null;
   onClose: () => void;
 }) {
@@ -32,7 +34,7 @@ export function CashierDialog({
   const errorId = useId();
   const [tab, setTab] = useState<CashierTab>(initialTab);
   const [methodId, setMethodId] = useState('');
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState(initialAmount);
   const [details, setDetails] = useState<Record<string, string>>({});
   const [localError, setLocalError] = useState<string | null>(null);
   const busy = useRef(false);

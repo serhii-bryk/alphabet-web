@@ -4,7 +4,7 @@ Source of truth for the current product. Read this before reconstructing history
 
 Update this file at the end of every completed milestone, and whenever an important architecture or integration decision changes. Record names and decisions only. Never store secrets, passwords, API keys, tokens, HMAC material, or personal test-account credentials.
 
-Last updated: 2026-10-14 (global search).
+Last updated: 2026-10-14 (Chat launcher, balance, and safe field fill).
 
 ## Product goal
 
@@ -53,7 +53,7 @@ Fast Development Mode, coordinated by `.cursor/agents/orchestrator.md`.
 - Payments core: cashier deposit and withdrawal through the BFF. The browser never calls the payment provider or Platform directly. A confirmed deposit credits the wallet only from the BFF after a trusted captured callback. Test deposit is a separate guarded path. Development mock Card and Bank transfer methods are a third path: they stay pending and do not move money. Transaction history is not built.
 - Registration UI and BFF: two-step signup. A successful Platform register is followed by the existing login flow, which seals the httpOnly session. Email verification is not required. One stage call with `SESSION_SECRET` set created an account, logged in, and returned an authenticated session while `emailVerified` was false. That call is not part of CI.
 - Player casino personalization stored on Platform. Favorites, last played, and most played use the sealed session player id. The browser calls `/api/player/favorites`, `/api/player/last-played`, and `/api/player/most-played` and never sends a player id. Favorites are the full Platform list. Last played and most played use Platform’s paginator (`page`, `limit`, `order`, and the confirmed date or count filters). Pages are `/favorites`, `/recently-played`, and `/most-played` (no locale prefix). Guests get the existing sign-in dialog from a heart and a sign-in prompt on those pages. Signed-in hearts are optimistic, shared across cards, game info, and the game toolbar, and roll back on failure. The default casino lobby shows compact Recently Played and Favorites rails, then the existing discovery grid, then Most Played. Empty rails stay hidden. A successful real launch refreshes last played and most played. Logout drops those caches.
-- In-product support chat. The browser calls `POST /api/support/chat` and `GET /api/support/channels`. The BFF calls the AI provider. Confirmed product facts live in `apps/bff/src/support/knowledge.ts`. Answers can include only the safe actions `navigate`, `open_cashier`, `open_login`, `open_registration`, and `open_human_support`. The active conversation is kept in `sessionStorage` (`alphabet.supportChat.v1`). English and Arabic are supported, and Arabic uses a right-to-left panel. Human handoff shows only configured contacts. Support cannot move money or change an account.
+- In-product support chat with two modes: Support and Site Assistant. A floating launcher stays at the bottom-right on every page, including desktop. Minimize collapses the panel and keeps the mode, draft, and conversation in `sessionStorage` (`alphabet.supportChat.v1`). New conversation is the only reset. The browser calls `POST /api/support/chat` and `GET /api/support/channels`. FAQ topics and simple commands are answered in the BFF without a model. Short follow-ups such as “why?” and “open it” reuse the previous site topic before any model call. Free-text product questions can call OpenAI only when `AI_CHAT_ENABLED` is exactly `true`, `NODE_ENV` is not `production`, and `OPENAI_API_KEY` is set on the server. The default model is `gpt-4o-mini`. Confirmed product facts live in `apps/bff/src/support/knowledge.ts` and `apps/bff/src/support/faq.ts`. The model cannot choose URLs, player ids, raw API calls, or `fill_field`. Allowed actions are `navigate`, `open_cashier`, `open_login`, `open_registration`, `open_human_support`, `scroll_to` (`games`), `open_promotion` (`welcome`, `weekend-live`, `journal-drops`), `open_game` only after a real catalog search, and `fill_field` for `search`, `catalog_search`, `deposit_amount`, `withdraw_amount`, `email`, `first_name`, `last_name`, `country`, and `phone`. Filling a field never submits it. There is no promo-code field. Passwords, OTPs, card details, and bank details are refused. Site Assistant runs one safe action through the existing router, dialogs, cashier, search, and game launcher. Deposit and withdraw open the existing cashier and do not move money. A balance question in either mode reads only the sealed session. Guests are sent to login. The amount is not sent to OpenAI. Transaction history is not available and is not invented. The chat does not place bets or change account or responsible-gaming settings. Server rate limits use the sealed player id, an httpOnly `ab_ai_scope` cookie, and the client IP. They are not cleared by New conversation or a refresh. English and Arabic are supported, and Arabic uses a right-to-left panel. Site Assistant remaps the panel accent to the existing positive token. Human handoff shows only configured contacts.
 
 ## Current integrations
 
@@ -109,10 +109,23 @@ BFF:
 - `PAYMENTS_TEST_MODE` — exactly `true` to show Test Deposit. Ignored when `NODE_ENV` is `production`.
 - `PAYMENTS_TEST_MAX_AMOUNT` — optional, default 50. Non-positive values and values above 1000 fall back to 50.
 - `PAYMENTS_MOCK_MODE` — exactly `true` to show development Card and Bank transfer methods. Ignored when `NODE_ENV` is `production`. These methods do not call FinalPay and do not credit or reserve a wallet.
-- `SUPPORT_AI_PROVIDER` — optional, `openai` (default) or `anthropic`
-- `SUPPORT_AI_API_KEY` — required before the assistant can answer. If it is missing, chat returns `ai_unavailable` and human handoff still works
-- `SUPPORT_AI_MODEL` — optional. Defaults to `gpt-4o-mini` for OpenAI and `claude-haiku-4-5` for Anthropic
-- `SUPPORT_AI_BASE_URL` — optional. Defaults to `https://api.openai.com/v1` or `https://api.anthropic.com`. `http` is accepted only for localhost
+- `AI_CHAT_ENABLED` — exactly `true` before a live model call. Any other value, including unset, keeps the model off. FAQ and rules still work. Human handoff still works.
+- `OPENAI_API_KEY` — server only. Never put it in a `NEXT_PUBLIC` variable. Live calls also require `AI_CHAT_ENABLED=true` and `NODE_ENV` other than `production`.
+- `AI_CHAT_MODEL` — optional, default `gpt-4o-mini`. Must match `^[A-Za-z0-9._:-]{1,80}$`.
+- `AI_CHAT_BASE_URL` — optional, default `https://api.openai.com/v1`. `http` is accepted only for localhost or `127.0.0.1`.
+- `AI_CHAT_DAILY_BUDGET_USD` — optional, default `1`.
+- `AI_CHAT_TOTAL_BUDGET_USD` — optional, default `5`. This total does not reset.
+- `AI_CHAT_SESSION_LIMIT` — optional, default `10` model calls for one player or guest scope. A new chat does not reset it.
+- `AI_CHAT_HOURLY_LIMIT` — optional, default `10` model calls per hour for that identity, and also per IP.
+- `AI_CHAT_MAX_MESSAGE_CHARS` — optional, default `500`.
+- `AI_CHAT_MAX_OUTPUT_TOKENS` — optional, default `250`.
+- `AI_CHAT_MAX_INPUT_TOKENS` — optional, default `2000`. Used to reserve the worst-case request cost.
+- `AI_CHAT_MAX_CONCURRENT` — optional, default `2`.
+- `AI_CHAT_TIMEOUT_MS` — optional, default `8000`.
+- `AI_CHAT_MAX_HISTORY` — optional, default `6`.
+- `AI_CHAT_INPUT_USD_PER_MILLION` — optional, default `0.15`.
+- `AI_CHAT_OUTPUT_USD_PER_MILLION` — optional, default `0.60`.
+- The spend ledger is gitignored `apps/bff/data/ai-budget.json`, locked so processes on the same machine share it. These checks complement OpenAI organization and project billing limits. They do not replace them. Live calls stay off in production because this file is not a multi-host store.
 - `SUPPORT_EMAIL` — optional human-support address
 - `SUPPORT_TELEGRAM_URL` — optional `https` Telegram link
 - `SUPPORT_WHATSAPP_URL` — optional `https` WhatsApp link
@@ -134,6 +147,7 @@ Web:
 - Google sign-in is not available. `config/login_methods.php` registers only the Telegram driver. There is no Google OAuth/OIDC driver or partner endpoint.
 - Facebook sign-in is not available. There is no Facebook driver, route, or credential contract.
 - Telegram does not supply a verified email or phone. Platform stores a null email and null password and does not collect date of birth or country on this path. AlphaBet does not invent those fields and does not merge the Telegram player with an email account. Cool-off, self-exclusion, blocked, and inactive still reject login. A cashier call for a player with no email sends an empty email because that is what Platform stored.
+- Live OpenAI calls are refused when `NODE_ENV` is `production`, even if `AI_CHAT_ENABLED=true` and a key is set. The budget file lock is safe for several processes on one machine and is not a shared limit across hosts. A multi-instance deployment needs a real shared store before the model can be turned on. FAQ, rules, and Site Assistant commands keep working with the model off.
 
 ## Current test setup
 

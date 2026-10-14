@@ -505,6 +505,7 @@ function GroupLabel({ children }: { children: ReactNode }) {
 export function CommandSearch() {
   const t = useTranslations('search');
   const [open, setOpen] = useState(false);
+  const [seed, setSeed] = useState('');
   const input = useRef<HTMLInputElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const opener = useRef<HTMLElement | null>(null);
@@ -530,6 +531,7 @@ export function CommandSearch() {
     const key = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
+        setSeed('');
         openDialog();
       }
       if (event.key === 'Escape' && openRef.current) {
@@ -538,8 +540,10 @@ export function CommandSearch() {
       }
     };
     const openSearch = (event: Event) => {
-      const candidate =
-        event instanceof CustomEvent && event.detail?.opener instanceof HTMLElement ? event.detail.opener : null;
+      const detail = event instanceof CustomEvent ? event.detail : null;
+      const candidate = detail?.opener instanceof HTMLElement ? detail.opener : null;
+      const query = detail && typeof detail.query === 'string' ? detail.query.slice(0, 80) : '';
+      setSeed(query);
       openDialog(candidate);
     };
     addEventListener('keydown', key);
@@ -606,6 +610,8 @@ export function CommandSearch() {
         className="surface panel modal-panel mx-auto max-h-[75vh] max-w-2xl overflow-auto rounded-[var(--radius-lg)] p-4"
       >
         <GlobalSearch
+          key={seed}
+          initialQuery={seed}
           inputRef={input}
           stableOpener={opener}
           onDone={close}

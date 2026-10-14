@@ -114,7 +114,7 @@ describe('support chat ui', () => {
     expect(document.querySelector('.support-panel')).toBeNull();
     await click('Open support chat');
     expect(document.querySelector('.support-panel')).not.toBeNull();
-    await click('Close support chat');
+    await click('Minimize chat');
     expect(document.querySelector('.support-panel')).toBeNull();
     await click('Open support chat');
     await text('How do I deposit?');
@@ -124,6 +124,80 @@ describe('support chat ui', () => {
     expect(push).toHaveBeenCalledWith('/live-casino');
     expect(document.querySelector('.support-panel')).toBeNull();
     expect(sessionStorage.getItem('alphabet.supportChat.v1')).toContain('Live Casino is in the product switch.');
+  });
+
+  it('keeps the launcher available and preserves history, mode, and draft when minimized', async () => {
+    installFetch();
+    roots.push(await renderChat());
+    expect(document.querySelector('.support-launcher')).not.toBeNull();
+    await click('Open support chat');
+    await text('Answers questions about AlphaBet');
+    await click('Site Assistant');
+    await text('Helps you navigate and use the site');
+    const area = document.querySelector('textarea');
+    if (!area) throw new Error('Missing draft field');
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+    await act(async () => {
+      setter?.call(area, 'keep this draft');
+      area.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await click('Minimize chat');
+    expect(document.querySelector('.support-panel')).toBeNull();
+    expect(document.querySelector('.support-launcher')).not.toBeNull();
+    expect(sessionStorage.getItem('alphabet.supportChat.v1')).toContain('keep this draft');
+    await click('Open support chat');
+    expect(document.querySelector('.support-panel')?.getAttribute('data-mode')).toBe('assistant');
+    expect(document.querySelector('textarea')?.value).toBe('keep this draft');
+    await text('Suggested topics');
+  });
+
+  it('switches to the site assistant and runs its action', async () => {
+    installFetch(() => ({
+      message: 'Opening Live Casino.',
+      actions: [{ type: 'navigate', target: 'live_casino' }],
+      confidence: 'known',
+      escalate: false,
+      source: 'assistant',
+      autoRun: true,
+    }));
+    roots.push(await renderChat());
+    await click('Open support chat');
+    await click('Site Assistant');
+    expect(document.querySelector('.support-panel')?.getAttribute('data-mode')).toBe('assistant');
+    await click('Where is Live Casino?');
+    expect(push).toHaveBeenCalledWith('/live-casino');
+    expect(sessionStorage.getItem('alphabet.supportChat.v1')).toContain('Opening Live Casino.');
+  });
+
+  it('fills search from an assistant action and does not submit a password field', async () => {
+    const queries: string[] = [];
+    const onSearch = (event: Event) => {
+      const detail = event instanceof CustomEvent ? event.detail : null;
+      if (detail && typeof detail.query === 'string') queries.push(detail.query);
+    };
+    addEventListener('open-command-search', onSearch);
+    installFetch(() => ({
+      message: 'I’ll put “roulette” in search.',
+      actions: [{ type: 'fill_field', field: 'search', value: 'roulette' }],
+      confidence: 'known',
+      escalate: false,
+      source: 'assistant',
+      autoRun: true,
+    }));
+    roots.push(await renderChat());
+    await click('Open support chat');
+    await click('Site Assistant');
+    const area = document.querySelector('textarea');
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+    await act(async () => {
+      setter?.call(area, 'fill the search with roulette');
+      area?.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await click('Send');
+    await text('in search');
+    expect(queries).toEqual(['roulette']);
+    expect(document.body.textContent).not.toContain('password');
+    removeEventListener('open-command-search', onSearch);
   });
 
   it('keeps the conversation after the panel is mounted again', async () => {

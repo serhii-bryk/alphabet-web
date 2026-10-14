@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         opener ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
       reset();
       setOpen(false);
-      setRegistrationPrefill(prefill);
+      setRegistrationPrefill((current) => (prefill ? { ...current, ...prefill } : undefined));
       setRegistrationNonce((current) => current + 1);
       setRegistrationOpen(true);
     },

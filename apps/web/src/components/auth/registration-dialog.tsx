@@ -70,6 +70,9 @@ export interface RegistrationPrefill {
   email?: string;
   password?: string;
   country?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
 }
 
 const emptyInput: RegistrationInput = {
@@ -109,6 +112,9 @@ function withPrefill(initial?: RegistrationPrefill): RegistrationInput {
     email: initial?.email ?? '',
     password: initial?.password ?? '',
     country: initial?.country ?? '',
+    firstName: initial?.firstName ?? '',
+    lastName: initial?.lastName ?? '',
+    phone: initial?.phone ?? '',
   };
 }
 

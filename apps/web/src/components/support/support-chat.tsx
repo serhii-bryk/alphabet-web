@@ -11,14 +11,17 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { LifeBuoy, RotateCcw, Send, X } from 'lucide-react';
+import { LifeBuoy, Minus, RotateCcw, Send } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
-import type { SupportAction, SupportChannel, SupportSection } from '@brand/contracts';
+import type { CatalogGame, SupportAction, SupportCatalogGame, SupportChannel, SupportChatMode, SupportFaqId, SupportSection } from '@brand/contracts';
+import type { RegistrationPrefill } from '../auth/registration-dialog';
 import { usePathname, useRouter } from '@/i18n/navigation';
+import { promotionHref } from '@/data/promotions';
 import { fetchSupportChannels, sendSupportChat, SupportRequestError } from '@/data/support-browser';
 import { useAuthDialog } from '../auth/auth-provider';
 import { useSession } from '../auth/session';
 import { useCashier } from '../cashier/cashier-provider';
+import { openCasinoGameSection } from '../game-launch/casino-nav';
 import { useGameLauncher } from '../game-launch/provider';
 import { isDesktopViewport } from '../game-launch/viewport';
 import { AlphaBetLoader, TypingDots } from '../alphabet-loader';
@@ -44,13 +47,19 @@ export function useSupportChat() {
   return useContext(SupportChatContext);
 }
 
-const suggestions = [
-  { id: 'suggestDeposit', prompt: 'suggestDeposit' },
-  { id: 'suggestWithdraw', prompt: 'suggestWithdraw' },
-  { id: 'suggestGame', prompt: 'suggestGame' },
-  { id: 'suggestLive', prompt: 'suggestLive' },
-  { id: 'suggestLanguage', prompt: 'suggestLanguage' },
-  { id: 'suggestProblem', prompt: 'suggestProblem' },
+const faqTopics = [
+  { id: 'registration', title: 'faqRegistration' },
+  { id: 'verification', title: 'faqVerification' },
+  { id: 'deposits', title: 'faqDeposits' },
+  { id: 'withdrawals', title: 'faqWithdrawals' },
+  { id: 'wallet', title: 'faqWallet' },
+  { id: 'casino', title: 'faqCasino' },
+  { id: 'sports', title: 'faqSports' },
+  { id: 'promotions', title: 'faqPromotions' },
+  { id: 'favorites', title: 'faqFavorites' },
+  { id: 'account', title: 'faqAccount' },
+  { id: 'responsible', title: 'faqResponsible' },
+  { id: 'contact', title: 'faqContact' },
 ] as const;
 
 function nextId() {
@@ -152,14 +161,20 @@ function SupportChatPanel({
   const { status } = useSession();
   const { openLogin, openRegistration } = useAuthDialog();
   const { openCashier } = useCashier();
-  const { focusedGame } = useGameLauncher();
+  const { focusedGame, launch } = useGameLauncher();
   const titleId = useId();
+  const modeId = useId();
+  const topicsId = useId();
+  const supportTabId = `${modeId}-support`;
+  const assistantTabId = `${modeId}-assistant`;
+  const logId = `${modeId}-log`;
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLButtonElement>(null);
   const wasOpen = useRef(false);
   const [hydrated, setHydrated] = useState(false);
   const [messages, setMessages] = useState<SupportTranscriptItem[]>([]);
+  const [mode, setMode] = useState<SupportChatMode>('support');
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
   const [handoff, setHandoff] = useState(false);
@@ -173,6 +188,8 @@ function SupportChatPanel({
       // Session storage is the source of the in-tab conversation. Reading it during render would mismatch the server HTML.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setMessages(stored.messages);
+      setMode(stored.mode);
+      setDraft(stored.draft);
       if (stored.open) onOpen();
     }
     setHydrated(true);
@@ -182,8 +199,8 @@ function SupportChatPanel({
 
   useEffect(() => {
     if (!hydrated) return;
-    writeSupportSession({ open, messages });
-  }, [hydrated, messages, open]);
+    writeSupportSession({ open, mode, draft, messages });
+  }, [draft, hydrated, messages, mode, open]);
 
   useEffect(() => {
     if (wasOpen.current && !open) openerRef.current?.focus();
@@ -194,7 +211,8 @@ function SupportChatPanel({
     if (!open) return;
     inputRef.current?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      // Search and other overlays call preventDefault on Escape. Leave the chat open so dismissing them does not wipe the panel.
+      if (event.key === 'Escape' && !event.defaultPrevented) onClose();
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
@@ -216,16 +234,90 @@ function SupportChatPanel({
     return () => controller.abort();
   }, [open]);
 
+  const runAction = useCallback(
+    (action: SupportAction, opener: HTMLElement | null, games?: SupportCatalogGame[]) => {
+      if (action.type === 'navigate') {
+        startRouteProgress();
+        router.push(supportActionHref(action));
+        if (!isDesktopViewport()) onClose();
+        return true;
+      }
+      if (action.type === 'open_cashier') {
+        if (status !== 'authenticated') openLogin(opener ?? undefined);
+        else openCashier(action.mode);
+        return true;
+      }
+      if (action.type === 'open_login') {
+        openLogin(opener ?? undefined);
+        return true;
+      }
+      if (action.type === 'open_registration') {
+        if (status !== 'guest') return false;
+        openRegistration(opener ?? undefined);
+        return true;
+      }
+      if (action.type === 'open_human_support') {
+        setHandoff(true);
+        return true;
+      }
+      if (action.type === 'scroll_to') {
+        openCasinoGameSection(pathname, (href) => {
+          startRouteProgress();
+          router.push(href);
+        });
+        return true;
+      }
+      if (action.type === 'open_promotion') {
+        startRouteProgress();
+        router.push(promotionHref(action.slug));
+        if (!isDesktopViewport()) onClose();
+        return true;
+      }
+      if (action.type === 'open_game') {
+        const game = games?.find((item) => item.id === action.gameId && item.active);
+        if (!game) return false;
+        const launchMode = status === 'authenticated' ? 'real' : game.demoPlayEnabled ? 'demo' : 'real';
+        launch(toCatalogGame(game), opener, launchMode);
+        return true;
+      }
+      if (action.type === 'fill_field') {
+        if (action.field === 'search') {
+          dispatchEvent(new CustomEvent('open-command-search', { detail: { opener, query: action.value } }));
+          return true;
+        }
+        if (action.field === 'catalog_search') {
+          const live = pathname === '/live-casino' || pathname.startsWith('/live-casino/');
+          startRouteProgress();
+          router.push(`${live ? '/live-casino' : '/casino'}?search=${encodeURIComponent(action.value)}`);
+          if (!isDesktopViewport()) onClose();
+          return true;
+        }
+        if (action.field === 'deposit_amount' || action.field === 'withdraw_amount') {
+          if (status !== 'authenticated') openLogin(opener ?? undefined);
+          else openCashier(action.field === 'deposit_amount' ? 'deposit' : 'withdraw', action.value);
+          return true;
+        }
+        if (status !== 'guest') return false;
+        const prefill = registrationPrefill(action);
+        if (!prefill) return false;
+        openRegistration(opener ?? undefined, prefill);
+        return true;
+      }
+      return false;
+    },
+    [launch, onClose, openCashier, openLogin, openRegistration, pathname, router, status],
+  );
+
   const send = useCallback(
-    async (text: string, reuse = false) => {
-      const content = redactSensitive(text.trim()).slice(0, 1000);
+    async (text: string, options?: { faqId?: SupportFaqId; reuse?: boolean }) => {
+      const content = redactSensitive(text.trim()).slice(0, 500);
       if (!content || pending) return;
       const prior = messages.filter((item) => !item.errorCode);
-      if (reuse && (prior.length === 0 || prior[prior.length - 1]?.role !== 'user')) return;
+      if (options?.reuse && (prior.length === 0 || prior[prior.length - 1]?.role !== 'user')) return;
       const userMessage: SupportTranscriptItem = { id: nextId(), role: 'user', content };
-      const history = reuse ? prior : [...prior, userMessage];
+      const history = (options?.reuse ? prior : [...prior, userMessage]).slice(-8);
       const gameTitle = focusedGame?.title.replace(/\s+/g, ' ').trim().slice(0, 120) ?? '';
-      setMessages((current) => (reuse ? prior : [...current, userMessage]));
+      setMessages((current) => (options?.reuse ? prior : [...current, userMessage]));
       setDraft('');
       setPending(true);
       setHandoff(false);
@@ -240,14 +332,23 @@ function SupportChatPanel({
             gameOpen: Boolean(focusedGame),
             ...(gameTitle ? { gameTitle } : {}),
           },
+          mode,
+          ...(options?.faqId ? { faqId: options.faqId } : {}),
         });
+        let assistantText = reply.message;
+        if (reply.autoRun && reply.actions[0]) {
+          const completed = runAction(reply.actions[0], inputRef.current, reply.games);
+          if (!completed) assistantText = t('actionFailed');
+        }
         setMessages((current) => [
           ...current,
           {
             id: nextId(),
             role: 'assistant',
-            content: reply.message,
+            content: assistantText,
             actions: reply.actions,
+            games: reply.games,
+            related: reply.related,
             escalate: reply.escalate,
           },
         ]);
@@ -267,28 +368,8 @@ function SupportChatPanel({
         setPending(false);
       }
     },
-    [activeLocale, focusedGame, messages, pathname, pending, status],
+    [activeLocale, focusedGame, messages, mode, pathname, pending, runAction, status, t],
   );
-
-  const runAction = (action: SupportAction, opener: HTMLElement) => {
-    if (action.type === 'navigate') {
-      startRouteProgress();
-      router.push(supportActionHref(action));
-      if (!isDesktopViewport()) onClose();
-      return;
-    }
-    if (action.type === 'open_cashier') {
-      if (status !== 'authenticated') openLogin(opener);
-      else openCashier(action.mode);
-      return;
-    }
-    if (action.type === 'open_login') openLogin(opener);
-    if (action.type === 'open_registration') {
-      if (status === 'guest') openRegistration(opener);
-      return;
-    }
-    if (action.type === 'open_human_support') setHandoff(true);
-  };
 
   const clear = () => {
     setMessages([]);
@@ -315,6 +396,8 @@ function SupportChatPanel({
           type="button"
           className="support-launcher"
           aria-label={t('open')}
+          aria-haspopup="dialog"
+          aria-expanded={false}
           onClick={onOpen}
         >
           <LifeBuoy size={18} />
@@ -329,41 +412,80 @@ function SupportChatPanel({
           aria-labelledby={titleId}
           dir={activeLocale === 'ar' ? 'rtl' : 'ltr'}
           lang={activeLocale}
+          data-mode={mode}
         >
-          <header className="support-panel-header flex items-center gap-2 border-b border-[var(--line)] px-3 py-2.5">
-            <span className="grid size-8 shrink-0 place-items-center rounded-[var(--radius-sm)] bg-[var(--accent)] text-[var(--accent-contrast)] shadow-[var(--shadow-accent)]">
-              <LifeBuoy size={17} />
-            </span>
-            <h2 id={titleId} className="min-w-0 flex-1 truncate text-sm font-black">
-              {t('title')}
-            </h2>
-            <button type="button" className="support-text-button" onClick={clear}>
-              {t('newChat')}
-            </button>
-            <button type="button" className="support-icon-button" aria-label={t('close')} onClick={onClose}>
-              <X size={18} />
-            </button>
+          <header className="support-panel-header border-b border-[var(--line)] px-3 py-2.5">
+            <div className="flex items-center gap-2">
+              <span className="grid size-8 shrink-0 place-items-center rounded-[var(--radius-sm)] bg-[var(--accent)] text-[var(--accent-contrast)] shadow-[var(--shadow-accent)]">
+                <LifeBuoy size={17} />
+              </span>
+              <h2 id={titleId} className="min-w-0 flex-1 truncate text-sm font-black">
+                {mode === 'assistant' ? t('assistantTitle') : t('title')}
+              </h2>
+              <button type="button" className="support-text-button" onClick={clear}>
+                {t('newChat')}
+              </button>
+              <button type="button" className="support-icon-button" aria-label={t('minimize')} onClick={onClose}>
+                <Minus size={18} />
+              </button>
+            </div>
+            <div
+              className="support-mode"
+              role="tablist"
+              aria-label={t('modeLabel')}
+              onKeyDown={(event) => {
+                const forward = activeLocale === 'ar' ? 'ArrowLeft' : 'ArrowRight';
+                const backward = activeLocale === 'ar' ? 'ArrowRight' : 'ArrowLeft';
+                const next =
+                  event.key === forward || event.key === 'ArrowDown'
+                    ? mode === 'support'
+                      ? 'assistant'
+                      : 'support'
+                    : event.key === backward || event.key === 'ArrowUp'
+                      ? mode === 'assistant'
+                        ? 'support'
+                        : 'assistant'
+                      : event.key === 'Home'
+                        ? 'support'
+                        : event.key === 'End'
+                          ? 'assistant'
+                          : null;
+                if (!next) return;
+                event.preventDefault();
+                setMode(next);
+                document.getElementById(next === 'support' ? supportTabId : assistantTabId)?.focus();
+              }}
+            >
+              <button
+                id={supportTabId}
+                type="button"
+                role="tab"
+                className="support-mode-tab"
+                aria-selected={mode === 'support'}
+                aria-controls={logId}
+                tabIndex={mode === 'support' ? 0 : -1}
+                onClick={() => setMode('support')}
+              >
+                {t('modeSupport')}
+              </button>
+              <button
+                id={assistantTabId}
+                type="button"
+                role="tab"
+                className="support-mode-tab"
+                aria-selected={mode === 'assistant'}
+                aria-controls={logId}
+                tabIndex={mode === 'assistant' ? 0 : -1}
+                onClick={() => setMode('assistant')}
+              >
+                {t('modeAssistant')}
+              </button>
+            </div>
+            <p className="support-mode-hint">{mode === 'assistant' ? t('assistantHint') : t('supportHint')}</p>
           </header>
-          <div ref={logRef} className="support-log" aria-live="polite">
+          <div id={logId} ref={logRef} className="support-log" role="tabpanel" aria-labelledby={mode === 'assistant' ? assistantTabId : supportTabId} aria-live="polite">
             {messages.length === 0 && !pending && (
-              <div>
-                <p className="mb-3 text-sm text-[var(--muted)]">{t('empty')}</p>
-                <div className="flex flex-wrap gap-2" aria-label={t('suggestionsLabel')}>
-                  {suggestions.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className="support-chip"
-                      onClick={() => void send(t(item.prompt))}
-                    >
-                      {t(item.prompt)}
-                    </button>
-                  ))}
-                  <button type="button" className="support-chip" onClick={() => setHandoff(true)}>
-                    {t('suggestHuman')}
-                  </button>
-                </div>
-              </div>
+              <p className="text-sm text-[var(--muted)]">{mode === 'assistant' ? t('assistantEmpty') : t('empty')}</p>
             )}
             {messages.map((item) => (
               <article
@@ -378,7 +500,7 @@ function SupportChatPanel({
                         <button
                           type="button"
                           className="support-text-button"
-                          onClick={() => void send(item.retryText ?? '', true)}
+                          onClick={() => void send(item.retryText ?? '', { reuse: true })}
                         >
                           <RotateCcw size={14} />
                           {t('retry')}
@@ -392,6 +514,19 @@ function SupportChatPanel({
                 ) : (
                   <p className="whitespace-pre-wrap">{item.content}</p>
                 )}
+                {item.related && item.related.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2" aria-label={t('relatedLabel')}>
+                    {item.related.map((id) => {
+                      const topic = faqTopics.find((entry) => entry.id === id);
+                      if (!topic) return null;
+                      return (
+                        <button key={id} type="button" className="support-chip" onClick={() => void send(t(topic.title), { faqId: id })}>
+                          {t(topic.title)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 {item.actions && item.actions.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {visibleSupportActions(item.actions, status === 'authenticated').map((action, index) => (
@@ -399,9 +534,9 @@ function SupportChatPanel({
                         key={`${item.id}-${action.type}-${index}`}
                         type="button"
                         className="support-chip"
-                        onClick={(event) => runAction(action, event.currentTarget)}
+                        onClick={(event) => runAction(action, event.currentTarget, item.games)}
                       >
-                        {actionLabel(t, action)}
+                        {actionLabel(t, action, item.games)}
                       </button>
                     ))}
                   </div>
@@ -411,7 +546,7 @@ function SupportChatPanel({
             {pending && (
               <p className="support-bubble support-bubble-assistant flex items-center gap-2" role="status">
                 <AlphaBetLoader size="sm" />
-                <span className="text-[var(--muted)]">{t('thinking')}</span>
+                <span className="text-[var(--muted)]">{mode === 'assistant' ? t('assistantThinking') : t('thinking')}</span>
                 <TypingDots className="text-[var(--accent)]" />
               </p>
             )}
@@ -474,6 +609,26 @@ function SupportChatPanel({
                 {t('human')}
               </button>
             </div>
+            <div className="support-topics-block">
+              <p id={topicsId} className="support-topics-label">
+                {t('faqLabel')}
+              </p>
+              <div className="support-topics" role="group" aria-labelledby={topicsId}>
+                {faqTopics.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="support-chip"
+                    onClick={() => void send(t(item.title), { faqId: item.id })}
+                  >
+                    {t(item.title)}
+                  </button>
+                ))}
+                <button type="button" className="support-chip" onClick={() => setHandoff(true)}>
+                  {t('suggestHuman')}
+                </button>
+              </div>
+            </div>
             <div className="flex items-end gap-2">
               <label className="min-w-0 flex-1">
                 <span className="sr-only">{t('placeholder')}</span>
@@ -481,8 +636,8 @@ function SupportChatPanel({
                   ref={inputRef}
                   value={draft}
                   rows={2}
-                  maxLength={1000}
-                  placeholder={t('placeholder')}
+                  maxLength={500}
+                  placeholder={mode === 'assistant' ? t('assistantPlaceholder') : t('placeholder')}
                   disabled={pending}
                   onChange={(event) => setDraft(event.target.value)}
                   onKeyDown={(event) => {
@@ -508,6 +663,7 @@ function SupportChatPanel({
 function actionLabel(
   t: ReturnType<typeof useTranslations<'supportChat'>>,
   action: SupportAction,
+  games?: SupportCatalogGame[],
 ) {
   if (action.type === 'navigate' && action.search) return t('actionSearchFor', { query: action.search });
   if (action.type === 'navigate') {
@@ -521,11 +677,63 @@ function actionLabel(
       responsible_gaming: 'actionResponsible',
       support: 'actionSupport',
       journal: 'actionJournal',
+      favorites: 'actionFavorites',
+      recently_played: 'actionRecent',
     } as const;
     return t(labels[action.target]);
   }
   if (action.type === 'open_cashier') return t(action.mode === 'deposit' ? 'actionDeposit' : 'actionWithdraw');
   if (action.type === 'open_login') return t('actionLogin');
   if (action.type === 'open_registration') return t('actionRegister');
+  if (action.type === 'scroll_to') return t('actionScrollGames');
+  if (action.type === 'open_promotion') {
+    const labels = {
+      welcome: 'actionPromoWelcome',
+      'weekend-live': 'actionPromoWeekend',
+      'journal-drops': 'actionPromoJournal',
+    } as const;
+    return t(labels[action.slug]);
+  }
+  if (action.type === 'open_game') {
+    const title = games?.find((game) => game.id === action.gameId)?.title;
+    return title ? t('actionOpenGame', { title }) : t('actionOpenGameGeneric');
+  }
+  if (action.type === 'fill_field') {
+    const labels = {
+      search: 'actionFillSearch',
+      catalog_search: 'actionFillFilter',
+      deposit_amount: 'actionFillDeposit',
+      withdraw_amount: 'actionFillWithdraw',
+      email: 'actionFillEmail',
+      first_name: 'actionFillFirstName',
+      last_name: 'actionFillLastName',
+      country: 'actionFillCountry',
+      phone: 'actionFillPhone',
+    } as const;
+    return t(labels[action.field], { value: action.value });
+  }
   return t('actionHuman');
+}
+
+function registrationPrefill(action: Extract<SupportAction, { type: 'fill_field' }>): RegistrationPrefill | null {
+  if (action.field === 'email') return { email: action.value };
+  if (action.field === 'first_name') return { firstName: action.value };
+  if (action.field === 'last_name') return { lastName: action.value };
+  if (action.field === 'country') return { country: action.value };
+  if (action.field === 'phone') return { phone: action.value };
+  return null;
+}
+
+function toCatalogGame(game: SupportCatalogGame): CatalogGame {
+  return {
+    id: game.id,
+    slug: game.slug,
+    title: game.title,
+    kind: game.kind,
+    imageUrl: game.imageUrl,
+    provider: null,
+    categories: [],
+    demoPlayEnabled: game.demoPlayEnabled,
+    active: game.active,
+  };
 }

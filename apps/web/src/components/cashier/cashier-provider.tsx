@@ -10,7 +10,7 @@ import { Button } from '../ui';
 import { CashierDialog, type CashierTab } from './cashier-dialog';
 
 interface CashierApi {
-  openCashier: (tab?: CashierTab) => void;
+  openCashier: (tab?: CashierTab, amount?: string) => void;
 }
 
 const CashierContext = createContext<CashierApi>({ openCashier: () => {} });
@@ -44,6 +44,7 @@ export function useCashier() {
 export function CashierProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<CashierTab>('deposit');
+  const [amountSeed, setAmountSeed] = useState('');
   const [generation, setGeneration] = useState(0);
   const [returnStatus, setReturnStatus] = useState<PaymentStatusResponse | 'loading' | null>(null);
   const [handledSearch, setHandledSearch] = useState<string | null>(null);
@@ -60,8 +61,9 @@ export function CashierProvider({ children }: { children: ReactNode }) {
     setOpen(true);
   }
 
-  const openCashier = useCallback((next: CashierTab = 'deposit') => {
+  const openCashier = useCallback((next: CashierTab = 'deposit', amount?: string) => {
     setTab(next);
+    setAmountSeed(amount ?? '');
     setReturnStatus(null);
     setGeneration((current) => current + 1);
     setOpen(true);
@@ -102,6 +104,7 @@ export function CashierProvider({ children }: { children: ReactNode }) {
         <CashierDialog
           key={generation}
           initialTab={tab}
+          initialAmount={amountSeed}
           returnStatus={returnStatus}
           onClose={() => setOpen(false)}
         />

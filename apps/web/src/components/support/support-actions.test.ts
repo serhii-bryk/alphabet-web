@@ -18,6 +18,13 @@ describe('support actions', () => {
       mode: 'deposit',
     });
     expect(parseSupportAction({ type: 'open_login' })).toEqual({ type: 'open_login' });
+    expect(parseSupportAction({ type: 'fill_field', field: 'deposit_amount', value: '20' })).toEqual({
+      type: 'fill_field',
+      field: 'deposit_amount',
+      value: '20',
+    });
+    expect(parseSupportAction({ type: 'fill_field', field: 'password', value: 'hunter2' })).toBeNull();
+    expect(parseSupportAction({ type: 'fill_field', field: 'search', value: 'javascript:alert(1)' })).toBeNull();
     expect(parseSupportAction({ type: 'open_registration' })).toEqual({ type: 'open_registration' });
     expect(
       visibleSupportActions(
@@ -67,6 +74,8 @@ describe('support session', () => {
   it('keeps the conversation for the tab and redacts card numbers from the summary', () => {
     writeSupportSession({
       open: true,
+      mode: 'support',
+      draft: 'card 4242424242424242',
       messages: [
         { id: '1', role: 'user', content: 'Card 4242424242424242 will not stay' },
         {
@@ -79,6 +88,8 @@ describe('support session', () => {
     });
     const stored = readSupportSession();
     expect(stored?.open).toBe(true);
+    expect(stored?.draft).toContain('[redacted]');
+    expect(stored?.draft).not.toContain('4242');
     expect(stored?.messages[0]?.content).not.toContain('4242');
     expect(stored?.messages[1]?.actions).toEqual([{ type: 'open_cashier', mode: 'deposit' }]);
     const summary = buildHandoffSummary({
