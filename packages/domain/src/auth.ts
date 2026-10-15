@@ -5,6 +5,7 @@ import type {
   PlatformLoginInput,
   PlatformLoginResponse,
   PlatformProfileResponse,
+  PlatformTelegramLoginInput,
 } from '@brand/platform';
 
 const refreshWithinMs = 300_000;
@@ -31,7 +32,7 @@ export class AuthError extends Error {
 export interface PlayerSession {
   accessToken: string;
   playerId: string;
-  email: string;
+  email: string | null;
   currency: string | null;
   expiresAt: string;
 }
@@ -44,6 +45,13 @@ export interface LoginCommand {
   domain?: string;
 }
 
+export interface TelegramLoginCommand {
+  payload: PlatformTelegramLoginInput['payload'];
+  ipNumber?: string;
+  browser?: string;
+  domain?: string;
+}
+
 export type RefreshIfNeededResult =
   | { action: 'keep'; session: PlayerSession }
   | { action: 'replace'; session: PlayerSession }
@@ -51,6 +59,7 @@ export type RefreshIfNeededResult =
 
 export interface AuthUseCases {
   login(command: LoginCommand): Promise<PlayerSession>;
+  loginWithTelegram(command: TelegramLoginCommand): Promise<PlayerSession>;
   refreshIfNeeded(session: PlayerSession): Promise<RefreshIfNeededResult>;
   logout(session: PlayerSession): Promise<void>;
 }
@@ -79,30 +88,22 @@ export function createAuthUseCases(
       } catch (error) {
         throw mapLoginFailure(error);
       }
+      return establishSession(platform, authenticated, now);
+    },
 
-      let profile: PlatformProfileResponse;
+    async loginWithTelegram(command) {
+      let authenticated: PlatformLoginResponse;
       try {
-        profile = await platform.getProfile(authenticated.profile.id, authenticated.access_token);
-      } catch {
-        throw new AuthError('auth_unavailable');
+        authenticated = await platform.authenticateTelegram(telegramInput(command));
+      } catch (error) {
+        throw mapTelegramFailure(error);
       }
-
-      if (profile.profile.id !== authenticated.profile.id) {
-        throw new AuthError('auth_unavailable');
+      try {
+        return await establishSession(platform, authenticated, now);
+      } catch (error) {
+        if (error instanceof AuthError) throw error;
+        throw new AuthError('external_auth_unavailable');
       }
-
-      const expiresAt = new Date(now() + authenticated.expires_in * 1000);
-      if (Number.isNaN(expiresAt.getTime())) {
-        throw new AuthError('auth_unavailable');
-      }
-
-      return {
-        accessToken: authenticated.access_token,
-        playerId: String(profile.profile.id),
-        email: profile.profile.email,
-        currency: profile.profile.currency?.code ?? null,
-        expiresAt: expiresAt.toISOString(),
-      };
     },
 
     async refreshIfNeeded(session) {
@@ -158,6 +159,36 @@ export function createAuthUseCases(
   };
 }
 
+async function establishSession(
+  platform: PlatformClient,
+  authenticated: PlatformLoginResponse,
+  now: () => number,
+): Promise<PlayerSession> {
+  let profile: PlatformProfileResponse;
+  try {
+    profile = await platform.getProfile(authenticated.profile.id, authenticated.access_token);
+  } catch {
+    throw new AuthError('auth_unavailable');
+  }
+
+  if (profile.profile.id !== authenticated.profile.id) {
+    throw new AuthError('auth_unavailable');
+  }
+
+  const expiresAt = new Date(now() + authenticated.expires_in * 1000);
+  if (Number.isNaN(expiresAt.getTime())) {
+    throw new AuthError('auth_unavailable');
+  }
+
+  return {
+    accessToken: authenticated.access_token,
+    playerId: String(profile.profile.id),
+    email: profile.profile.email,
+    currency: profile.profile.currency?.code ?? null,
+    expiresAt: expiresAt.toISOString(),
+  };
+}
+
 function loginInput(command: LoginCommand): PlatformLoginInput {
   return {
     email: command.email,
@@ -166,6 +197,36 @@ function loginInput(command: LoginCommand): PlatformLoginInput {
     ...(command.browser ? { browser: command.browser } : {}),
     ...(command.domain ? { domain: command.domain } : {}),
   };
+}
+
+function telegramInput(command: TelegramLoginCommand): PlatformTelegramLoginInput {
+  return {
+    payload: command.payload,
+    ...(command.ipNumber ? { ipNumber: command.ipNumber } : {}),
+    ...(command.browser ? { browser: command.browser } : {}),
+    ...(command.domain ? { domain: command.domain } : {}),
+  };
+}
+
+const telegramUnavailable = new Set([
+  'login_method_unavailable',
+  'login_method_not_found',
+  'login_method_driver_not_configured',
+  'login_method_credentials_missing',
+  'unsupported_login_method_flow',
+]);
+
+const accountRestricted = new Set(['player_has_excluded', 'player_login_unavailable']);
+
+function mapTelegramFailure(error: unknown): AuthError {
+  if (error instanceof PlatformClientError && error.code === 'request_failed' && error.platformCode) {
+    if (error.platformCode === 'invalid_login_method_authentication') {
+      return new AuthError('external_auth_rejected');
+    }
+    if (telegramUnavailable.has(error.platformCode)) return new AuthError('external_auth_unavailable');
+    if (accountRestricted.has(error.platformCode)) return new AuthError('account_restricted');
+  }
+  return new AuthError('external_auth_unavailable');
 }
 
 function mapLoginFailure(error: unknown): AuthError {

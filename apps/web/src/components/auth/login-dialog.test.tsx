@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NextIntlClientProvider } from 'next-intl';
 import { describe, expect, it } from 'vitest';
 import messages from '../../../messages/en.json';
@@ -9,9 +10,11 @@ const noop = () => {};
 
 function renderUi(node: ReactNode) {
   return renderToStaticMarkup(
-    <NextIntlClientProvider locale="en" messages={messages}>
-      {node}
-    </NextIntlClientProvider>,
+    <QueryClientProvider client={new QueryClient()}>
+      <NextIntlClientProvider locale="en" messages={messages}>
+        {node}
+      </NextIntlClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -19,17 +22,35 @@ describe('LoginDialog', () => {
   it('renders nothing while closed', () => {
     expect(
       renderUi(
-        <LoginDialog open={false} pending={false} error={null} onSubmit={noop} onClose={noop} />,
+        <LoginDialog
+          open={false}
+          pending={false}
+          error={null}
+          onSubmit={noop}
+          onClose={noop}
+          onCreateAccount={noop}
+          onTelegramAuthenticated={noop}
+        />,
       ),
     ).toBe('');
   });
 
   it('renders a labelled modal with autocomplete-ready inputs', () => {
     const html = renderUi(
-      <LoginDialog open pending={false} error={null} onSubmit={noop} onClose={noop} />,
+      <LoginDialog
+        open
+        pending={false}
+        error={null}
+        onSubmit={noop}
+        onClose={noop}
+        onCreateAccount={noop}
+        onTelegramAuthenticated={noop}
+      />,
     );
 
     expect(html).toContain('role="dialog"');
+    expect(html).toContain('New here?');
+    expect(html).toContain('>Create account<');
     expect(html).toContain('aria-modal="true"');
     expect(html).toMatch(/aria-labelledby="([^"]+)".*<h2 id="\1"[^>]*>Sign in<\/h2>/);
     expect(html).toMatch(/<label for="([^"]+)"[^>]*>Email<\/label><input id="\1"/);

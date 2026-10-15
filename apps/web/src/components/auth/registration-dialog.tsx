@@ -36,6 +36,7 @@ import { Button, IconButton } from '../ui';
 import { AuthDialog } from './auth-dialog';
 import { readRememberedIdentity, rememberIdentity } from './remembered-identity';
 import { applyAuthenticatedSession } from './session';
+import { TelegramContinue } from './telegram-continue';
 
 const inputClass =
   'h-11 w-full rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--bg)] px-3 text-base text-[var(--text)] outline-none transition focus-visible:border-[var(--accent)] aria-[invalid=true]:border-[var(--danger)]';
@@ -69,6 +70,9 @@ export interface RegistrationPrefill {
   email?: string;
   password?: string;
   country?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
 }
 
 const emptyInput: RegistrationInput = {
@@ -108,6 +112,9 @@ function withPrefill(initial?: RegistrationPrefill): RegistrationInput {
     email: initial?.email ?? '',
     password: initial?.password ?? '',
     country: initial?.country ?? '',
+    firstName: initial?.firstName ?? '',
+    lastName: initial?.lastName ?? '',
+    phone: initial?.phone ?? '',
   };
 }
 
@@ -204,14 +211,14 @@ export function RegistrationDialog({
 
   const flow = (
     <>
-      <div className="mb-4 grid grid-cols-2 rounded-[var(--radius-md)] bg-[var(--surface-2)] p-1">
-        <button type="button" className="h-9 rounded-[calc(var(--radius-md)-.2rem)] bg-[var(--surface)] text-sm font-bold shadow-sm">
-          {t('email')}
-        </button>
-        <button type="button" disabled className="h-9 text-sm font-semibold text-[var(--muted)] opacity-70">
-          {t('phone')} <span className="ms-1 text-[10px] uppercase">{t('soon')}</span>
-        </button>
-      </div>
+      {step === 1 && (
+        <TelegramContinue
+          onAuthenticated={() => {
+            onClose();
+            if (pathname !== '/casino') router.push('/casino');
+          }}
+        />
+      )}
       <div className="mb-5 flex items-center gap-2" aria-label={t('stepOf', { step, total: 2 })}>
         {[1, 2].map((item) => (
           <span
@@ -259,18 +266,6 @@ export function RegistrationDialog({
           </Button>
         </div>
       </form>
-
-      {step === 1 && (
-        <>
-          <div className="my-4 flex items-center gap-3 text-xs text-[var(--muted)] before:h-px before:flex-1 before:bg-[var(--line)] after:h-px after:flex-1 after:bg-[var(--line)]">
-            {t('orContinue')}
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <SocialButton label={t('google')} mark="G" />
-            <SocialButton label={t('apple')} mark="●" />
-          </div>
-        </>
-      )}
 
       <WelcomeOffer />
       <p className="mt-4 text-center text-xs text-[var(--muted)]">
@@ -550,22 +545,6 @@ function Field({
         </span>
       )}
     </div>
-  );
-}
-
-function SocialButton({ label, mark }: { label: string; mark: string }) {
-  const t = useTranslations('auth');
-  return (
-    <button
-      type="button"
-      disabled
-      title={t('comingSoonTitle', { label })}
-      className="flex h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] text-sm font-bold opacity-60"
-    >
-      <span aria-hidden>{mark}</span>
-      {label}
-      <span className="sr-only">{t('comingSoonSr')}</span>
-    </button>
   );
 }
 

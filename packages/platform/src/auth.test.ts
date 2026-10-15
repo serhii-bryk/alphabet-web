@@ -246,6 +246,49 @@ describe('platform auth transport', () => {
     );
   });
 
+  it('signs Telegram login-widget authentication and keeps a null email', async () => {
+    const fetcher = vi.fn<typeof fetch>(async () =>
+      Response.json({
+        ...loginResponse,
+        profile: { ...loginResponse.profile, email: null },
+      }),
+    );
+    const payload = {
+      id: 900000001,
+      first_name: 'Telegram',
+      auth_date: 1_700_000_000,
+      hash: 'ab'.repeat(32),
+    };
+    const result = await makeClient(fetcher).authenticateTelegram({
+      payload,
+      ipNumber: '203.0.113.10',
+      browser: 'Browser',
+      domain: 'https://brand.example',
+    });
+
+    expect(result.profile.email).toBeNull();
+    expect(result.access_token).toBe('login-access-token');
+    const body = JSON.stringify({
+      flow: 'login_widget',
+      payload,
+      ip_number: '203.0.113.10',
+      browser: 'Browser',
+      domain: 'https://brand.example',
+    });
+    const [input, init] = fetcher.mock.calls[0]!;
+    expect(String(input)).toBe('https://platform.example/api/v1/player/login/telegram');
+    expect(init?.body).toBe(body);
+    const bodyHash = createHash('sha256').update(body).digest('hex');
+    expect((init?.headers as Record<string, string>)['X-SIGNATURE']).toBe(
+      createHmac('sha256', 'secret')
+        .update(`POST\n/api/v1/player/login/telegram\n1700000000\n${bodyHash}`)
+        .digest('base64'),
+    );
+    expect(Object.keys(init?.headers ?? {}).map((name) => name.toLowerCase())).not.toContain(
+      'authorization',
+    );
+  });
+
   it('does not copy a non-JSON error body', async () => {
     const client = makeClient(async () => new Response('secret-upstream-text', { status: 503 }));
     const error: unknown = await client.logout(42, 'token').catch((caught: unknown) => caught);

@@ -17,9 +17,14 @@ button, a { -webkit-tap-highlight-color: transparent; }
   display: flex;
   flex-direction: column;
   max-width: none;
-  height: calc(100dvh - var(--header-h) - var(--bottom-h));
   padding: 0;
-  overflow: hidden;
+}
+.shell-sports .main > footer { padding-inline: 1rem; }
+.sportsbook {
+  flex: none;
+  width: 100%;
+  height: calc(100dvh - var(--header-h) - var(--bottom-h) - var(--open-games-h) - 13rem);
+  min-height: 20rem;
 }
 /* Product-area atmosphere: a fixed, low-contrast layer behind content. */
 .shell { position: relative; isolation: isolate; --area-a: transparent; --area-b: transparent; --area-line: var(--line); }
@@ -121,6 +126,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
   color: var(--muted);
   transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
+.game-tool > svg,
+.window-control > svg {
+  display: block;
+}
 .game-float-chrome .game-tool { width: 2rem; height: 2rem; }
 .game-tool:active { transform: scale(.92); }
 .game-tool:disabled { opacity: .45; cursor: not-allowed; }
@@ -201,6 +210,14 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .banner-photo {
   filter: saturate(1.14) contrast(1.06);
   transition: transform var(--dur-slow) var(--ease-out);
+}
+@keyframes banner-ambient {
+  from { transform: scale(1.04) translate3d(0, 0, 0); }
+  to { transform: scale(1.055) translate3d(-1.4%, -0.8%, 0); }
+}
+@keyframes banner-glow {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-3%, 2%, 0); }
 }
 .banner-light {
   background:
@@ -286,10 +303,54 @@ button, a { -webkit-tap-highlight-color: transparent; }
 }
 @media (min-width: 640px) {
   .sports-hero { height: 11.5rem; }
+  .sportsbook { height: calc(100dvh - var(--header-h) - var(--bottom-h) - var(--open-games-h) - 16.25rem); }
+}
+.lobby-hero,
+.page-hero {
+  --banner-x: 0;
+  --banner-y: 0;
+  cursor: default;
+}
+.lobby-hero :is(a[href], button:not(:disabled)),
+.page-hero :is(a[href], button:not(:disabled)) { cursor: pointer; }
+.lobby-hero button:disabled,
+.page-hero button:disabled { cursor: not-allowed; }
+.lobby-hero :is(input, select, textarea),
+.page-hero :is(input, select, textarea) { cursor: auto; }
+@media (hover: hover) and (pointer: fine) {
+  .lobby-hero .banner-photo,
+  .page-hero .banner-photo {
+    transform: translate3d(calc(var(--banner-x) * 14px), calc(var(--banner-y) * 10px), 0) scale(1.045);
+    transition: transform 280ms var(--ease-out);
+  }
+  .lobby-hero .banner-light,
+  .page-hero .banner-light {
+    transform: translate3d(calc(var(--banner-x) * -22px), calc(var(--banner-y) * -16px), 0);
+    transition: transform 420ms var(--ease-out);
+  }
+}
+@media (hover: none), (pointer: coarse) {
+  .lobby-hero .banner-photo,
+  .page-hero .banner-photo {
+    animation: banner-ambient 18s var(--ease-in-out) infinite alternate;
+    transition: none;
+  }
+  .lobby-hero .banner-light,
+  .page-hero .banner-light {
+    animation: banner-glow 18s var(--ease-in-out) infinite alternate;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lobby-hero .banner-photo,
+  .page-hero .banner-photo,
+  .lobby-hero .banner-light,
+  .page-hero .banner-light {
+    animation: none !important;
+    transform: none !important;
+    transition: none !important;
+  }
 }
 @media (hover: hover) {
-  .lobby-hero:hover .banner-photo,
-  .page-hero:hover .banner-photo,
   .promo-card:hover .banner-photo { transform: scale(var(--zoom)); }
 }
 .product-worlds {
@@ -326,7 +387,6 @@ button, a { -webkit-tap-highlight-color: transparent; }
   inset: 0;
   transition: transform var(--dur-slow) var(--ease-out);
 }
-.product-world-art { width: 100%; height: 100%; }
 .product-world-wash,
 .product-world-shade,
 .live-discovery-shade {
@@ -569,15 +629,17 @@ button, a { -webkit-tap-highlight-color: transparent; }
 /*
   Stacking:
   page content auto, lobby section nav 20, mobile nav 40,
-  desktop game windows 52, support chat 60, header and sidebar 64,
+  game page 1, parked games 52, open games bar 55, support chat 60, header and sidebar 64,
   command search 70, mobile menu 70, toasts 80, mobile game workspace 90,
   auth cashier and critical dialogs 95.
 */
+body { --support-games: 0px; }
+body:has(#app-shell[data-has-open-games]) { --support-games: 5.75rem; }
 .support-launcher {
   position: fixed;
   z-index: 60;
   inset-inline-end: 1rem;
-  bottom: calc(var(--bottom-h) + 0.75rem);
+  bottom: calc(var(--bottom-h) + var(--support-games) + 0.75rem);
   display: inline-flex;
   height: 2.75rem;
   align-items: center;
@@ -603,18 +665,105 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .support-panel {
   position: fixed;
   z-index: 60;
-  inset-inline: 0;
-  top: var(--header-h);
-  bottom: var(--bottom-h);
+  inset-inline: 0.5rem;
+  top: auto;
+  bottom: calc(var(--bottom-h) + var(--support-games) + 0.5rem);
   display: flex;
+  height: min(38rem, calc(100dvh - var(--header-h) - var(--bottom-h) - var(--support-games) - 1rem));
   flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
   background: var(--surface);
-  border-inline-start: 1px solid var(--line);
+  box-shadow: var(--shadow-pop);
   animation: ab-panel-in var(--dur-slow) var(--ease-out) both;
+}
+.support-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+  margin-top: 0.55rem;
+  padding: 0.2rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+.support-mode-tab {
+  min-height: 2.25rem;
+  border: 0;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+.support-mode-tab[aria-selected='true'] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.support-mode-hint {
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+.support-topics-block { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.45rem; }
+.support-topics-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.support-topics-label {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.support-topics-toggle { gap: 0.15rem; padding-inline: 0.55rem; }
+.support-topics-toggle svg { transition: transform var(--dur-normal) var(--ease-out); }
+.support-topics-block[data-expanded='true'] .support-topics-toggle svg { transform: rotate(180deg); }
+.support-topics-clip {
+  max-height: 2.75rem;
+  overflow: hidden;
+  transition: max-height var(--dur-slow) var(--ease-out);
+}
+.support-topics-block[data-expanded='true'] .support-topics-clip {
+  max-height: min(12rem, 36dvh);
+  overflow: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .support-topics-clip, .support-topics-toggle svg { transition: none; }
 }
 .support-panel-header {
   background: linear-gradient(180deg, var(--accent-soft), var(--surface));
 }
+.support-panel[data-mode='assistant'] {
+  --accent: var(--positive);
+  --accent-strong: var(--positive);
+  --accent-contrast: var(--positive-contrast);
+  --accent-soft: color-mix(in srgb, var(--positive) 14%, var(--surface));
+  --accent-line: color-mix(in srgb, var(--positive) 45%, var(--line));
+  --accent-glow: color-mix(in srgb, var(--positive) 38%, transparent);
+  --shadow-accent: 0 10px 24px -8px var(--accent-glow);
+}
+.support-chip[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.support-topics {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, #000 calc(100% - 1.75rem), transparent);
+}
+[dir='rtl'] .support-topics { mask-image: linear-gradient(to left, #000 calc(100% - 1.75rem), transparent); }
+.support-topics-block[data-expanded='true'] .support-topics {
+  flex-wrap: wrap;
+  overflow: visible;
+  mask-image: none;
+}
+.support-topics::-webkit-scrollbar { display: none; }
+.support-topics .support-chip { min-height: 2.75rem; flex: none; padding-inline: 0.85rem; }
 .support-log {
   display: flex;
   min-height: 0;
@@ -691,14 +840,54 @@ button, a { -webkit-tap-highlight-color: transparent; }
   font-size: 0.75rem;
   line-height: 1.4;
 }
-.desktop-game-layer {
+#app-shell {
+  --sidebar-w: 0px;
+  --game-origin-x: 0px;
+  --open-games-h: 0px;
+}
+#app-shell[data-has-open-games] { --open-games-h: 5.75rem; }
+.route-content { display: contents; }
+#app-shell[data-game-page-active] .route-content { display: none; }
+#app-shell[data-has-open-games] {
+  padding-bottom: calc(var(--bottom-h) + var(--open-games-h));
+}
+.open-games-bar {
+  position: fixed;
+  z-index: 55;
+  inset-inline: 0;
+  bottom: var(--bottom-h);
+  padding: 0.75rem;
+  pointer-events: none;
+}
+.game-page-host { position: relative; z-index: 1; min-width: 0; }
+.game-page-host-parked {
   position: fixed;
   z-index: 52;
   top: var(--header-h);
-  bottom: 0;
+  bottom: calc(var(--bottom-h) + var(--open-games-h));
   inset-inline: 0;
   pointer-events: none;
-  isolation: isolate;
+}
+.shell:not(.shell-sports) .game-page-host:not(.game-page-host-parked) {
+  width: calc(100% + 2rem);
+  margin-inline: -1rem;
+}
+.game-page-window .game-stage {
+  height: calc(100dvh - var(--header-h) - var(--bottom-h) - var(--open-games-h) - 8.5rem);
+  min-height: 16rem;
+}
+.game-page-host .game-demo-prompt { top: calc(3.5rem + 28dvh); }
+.game-float-max {
+  top: calc(var(--header-h) + 0.5rem);
+  right: 0.5rem;
+  bottom: calc(var(--bottom-h) + var(--open-games-h) + 0.5rem);
+  left: calc(var(--game-origin-x) + 0.5rem);
+  width: auto;
+  height: auto;
+}
+[dir='rtl'] .game-float-max {
+  right: calc(var(--sidebar-w) + 0.5rem);
+  left: 0.5rem;
 }
 /*
   Parked games stay mounted, full size, and in the viewport. Moving them offscreen
@@ -737,23 +926,47 @@ button, a { -webkit-tap-highlight-color: transparent; }
   margin-bottom: 1.25rem;
   overflow-x: auto;
 }
-.lobby-anchor { scroll-margin-top: calc(var(--header-h) + 5.5rem); }
+.lobby-anchor {
+  scroll-margin-top: calc(var(--header-h) + 5.5rem);
+  scroll-margin-bottom: var(--open-games-h);
+}
 @media (min-width: 1100px) {
   .shell { padding-bottom: 0; padding-inline-start: 236px; }
   .shell.sidebar-collapsed { padding-inline-start: 76px; }
   .main { padding: 1.5rem 2rem 3rem; }
-  .shell-sports .main { height: calc(100dvh - var(--header-h)); padding: 0; }
+  .shell-sports .main { padding: 0; }
+  .shell-sports .main > footer { padding-inline: 2rem; }
+  .sportsbook { height: calc(100dvh - var(--header-h) - var(--open-games-h) - 12.75rem); min-height: 28rem; }
   .desktop-only { display: flex; } .mobile-only { display: none !important; }
+  .game-tool.desktop-only { display: inline-grid; }
   .desktop-only:empty { display: none; }
-  .support-launcher { display: none; }
-  .support-panel {
-    inset-inline-start: auto;
-    bottom: 0;
-    width: min(24rem, 100%);
-    box-shadow: var(--shadow-pop);
+  .support-launcher {
+    bottom: calc(var(--support-games) + 1rem);
+    inset-inline-end: 1.25rem;
   }
-  #app-shell .desktop-game-layer { inset-inline-start: 236px; }
-  #app-shell.sidebar-collapsed .desktop-game-layer { inset-inline-start: 76px; }
+  .support-launcher-label { display: inline; }
+  .support-panel {
+    inset-inline: auto;
+    inset-inline-end: 1.25rem;
+    bottom: calc(var(--support-games) + 1rem);
+    width: min(24rem, calc(100vw - 2.5rem));
+    height: min(36rem, calc(100dvh - var(--header-h) - var(--support-games) - 2rem));
+  }
+  #app-shell { --sidebar-w: 236px; --game-origin-x: var(--sidebar-w); }
+  #app-shell.sidebar-collapsed { --sidebar-w: 76px; }
+  [dir='rtl'] #app-shell { --game-origin-x: 0px; }
+  #app-shell[data-has-open-games] { padding-bottom: var(--open-games-h); }
+  .open-games-bar { bottom: 0; inset-inline-start: var(--sidebar-w); }
+  .game-page-host-parked { bottom: var(--open-games-h); inset-inline-start: var(--sidebar-w); }
+  .shell:not(.shell-sports) .game-page-host:not(.game-page-host-parked) {
+    width: calc(100% + 4rem);
+    margin-inline: -2rem;
+  }
+  .game-page-window .game-stage {
+    height: calc(100dvh - var(--header-h) - var(--open-games-h) - 5rem);
+    min-height: 22rem;
+  }
+  .game-float-max { bottom: calc(var(--open-games-h) + 0.5rem); }
   .lobby-section-nav {
     position: sticky;
     top: var(--header-h);

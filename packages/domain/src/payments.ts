@@ -14,6 +14,8 @@ import { isPlayerSessionEnded, playerIdNumber } from './auth.js';
 import type { PlayerSession } from './auth.js';
 
 export const testDepositMethodId = 'test-deposit';
+export const mockDepositMethodId = 'mock-card';
+export const mockWithdrawMethodId = 'mock-bank';
 const methodCacheTtlMs = 20 * 60 * 1000;
 const testDepositCooldownMs = 15_000;
 
@@ -102,6 +104,7 @@ export interface PaymentsRuntimeConfig {
   providerConfigured: boolean;
   testMode: boolean;
   testMaxAmount: number;
+  mockMode: boolean;
 }
 
 export interface PaymentActor {
@@ -149,6 +152,13 @@ export function resolveTestMaxAmount(raw: string | undefined): number {
 }
 
 export function isTestDepositEnabled(
+  flag: string | undefined,
+  nodeEnv: string | undefined,
+): boolean {
+  return flag === 'true' && nodeEnv !== 'production';
+}
+
+export function isMockPaymentsEnabled(
   flag: string | undefined,
   nodeEnv: string | undefined,
 ): boolean {
@@ -262,6 +272,10 @@ export function createPaymentUseCases(
       .map((method) => toPublicMethod(method));
     if (config.testMode) depositMethods.unshift(testMethod(config.testMaxAmount));
     const withdrawMethods = withdrawCache?.options.map((method) => toPublicMethod(method)) ?? [];
+    if (config.mockMode && !config.providerConfigured) {
+      depositMethods.push(mockDepositMethod());
+      withdrawMethods.push(mockWithdrawMethod());
+    }
     if (depositMethods.length === 0 && withdrawMethods.length === 0) {
       throw new PaymentError('provider_unavailable');
     }
@@ -337,6 +351,9 @@ export function createPaymentUseCases(
     const currency = paymentCurrency(actor.session, player.balance.currency);
     if (methodId === testDepositMethodId) {
       return testDeposit(actor, player.playerId, amount, currency, idempotencyKey);
+    }
+    if (methodId === mockDepositMethodId) {
+      return mockDeposit(actor, amount, currency, idempotencyKey);
     }
     if (!config.providerConfigured) throw new PaymentError('provider_unavailable');
     const customer = customerFromProfile(player.profile.profile);
@@ -484,6 +501,65 @@ export function createPaymentUseCases(
     }
   }
 
+  async function mockDeposit(
+    actor: PaymentActor,
+    amount: number,
+    currency: string,
+    idempotencyKey: string,
+  ): Promise<PaymentMutationResponse> {
+    if (!config.mockMode || config.providerConfigured) throw new PaymentError('method_unavailable');
+    if (outsideLimits(amount, 10, 500)) throw new PaymentError('invalid_amount');
+    const intent = newIntent({
+      actor,
+      direction: 'deposit',
+      amount,
+      currency,
+      methodId: mockDepositMethodId,
+      paymentId: ids(),
+      idempotencyKey,
+    });
+    intent.status = 'processing';
+    intent.resultStatus = 'processing';
+    intents.insert(intent);
+    return { status: 'processing', paymentId: intent.paymentId };
+  }
+
+  async function mockWithdraw(
+    actor: PaymentActor,
+    amount: number,
+    currency: string,
+    idempotencyKey: string,
+    details: Record<string, string> | undefined,
+  ): Promise<PaymentMutationResponse> {
+    if (!config.mockMode || config.providerConfigured) throw new PaymentError('method_unavailable');
+    if (outsideLimits(amount, 10, null)) throw new PaymentError('invalid_amount');
+    cleanDetails(
+      {
+        id: mockWithdrawMethodId,
+        label: 'Bank transfer',
+        minAmount: 10,
+        maxAmount: null,
+        fields: [{ name: 'account', label: 'Account reference' }],
+        submitUrl: null,
+        submitChecksum: null,
+      },
+      details,
+    );
+    const intent = newIntent({
+      actor,
+      direction: 'withdraw',
+      amount,
+      currency,
+      methodId: mockWithdrawMethodId,
+      paymentId: ids(),
+      idempotencyKey,
+    });
+    intent.status = 'processing';
+    intent.resultStatus = 'processing';
+    intents.insert(intent);
+    return { status: 'processing', paymentId: intent.paymentId };
+  }
+
   async function performWithdraw(
     actor: PaymentActor,
     methodId: string,
@@ -496,6 +572,9 @@ export function createPaymentUseCases(
     const currency = paymentCurrency(actor.session, player.balance.currency);
     if (toCents(amount) > toCents(player.balance.balance)) {
       throw new PaymentError('insufficient_balance');
+    }
+    if (methodId === mockWithdrawMethodId) {
+      return mockWithdraw(actor, amount, currency, idempotencyKey, details);
     }
     const customer = customerFromProfile(player.profile.profile);
     const option = await resolveWithdrawMethod(actor, player.playerId, currency, customer, methodId);
@@ -847,6 +926,7 @@ function toPublicMethod(method: ProviderPaymentMethod): PaymentMethod {
     maxAmount: method.maxAmount,
     fields: method.fields.map((field) => ({ name: field.name, label: field.label, required: true })),
     test: false,
+    mock: false,
   };
 }
 
@@ -858,6 +938,31 @@ function testMethod(maxAmount: number): PaymentMethod {
     maxAmount,
     fields: [],
     test: true,
+    mock: false,
+  };
+}
+
+function mockDepositMethod(): PaymentMethod {
+  return {
+    id: mockDepositMethodId,
+    label: 'Card',
+    minAmount: 10,
+    maxAmount: 500,
+    fields: [],
+    test: false,
+    mock: true,
+  };
+}
+
+function mockWithdrawMethod(): PaymentMethod {
+  return {
+    id: mockWithdrawMethodId,
+    label: 'Bank transfer',
+    minAmount: 10,
+    maxAmount: null,
+    fields: [{ name: 'account', label: 'Account reference', required: true }],
+    test: false,
+    mock: true,
   };
 }
 

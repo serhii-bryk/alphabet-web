@@ -9,9 +9,14 @@ import { useAuthDialog } from './auth-provider';
 import { formatBalance } from './header-auth';
 import { useBalance, useProfile, useSession } from './session';
 
-function Panel({ title, children }: { title: string; children: ReactNode }) {
+function Panel({ id, title, children }: { id?: string; title: string; children: ReactNode }) {
   return (
-    <section aria-label={title} className="surface rounded-[var(--radius-lg)] p-5">
+    <section
+      id={id}
+      tabIndex={id ? -1 : undefined}
+      aria-label={title}
+      className={`surface rounded-[var(--radius-lg)] p-5${id ? ' lobby-anchor outline-none' : ''}`}
+    >
       <h2 className="mb-4 text-sm font-bold uppercase tracking-[.14em] text-[var(--muted)]">
         {title}
       </h2>
@@ -50,7 +55,7 @@ function ProfilePanel() {
   const profile = useProfile();
   const t = useTranslations('account');
   return (
-    <Panel title={t('profile')}>
+    <Panel id="account-profile" title={t('profile')}>
       {profile.isPending ? (
         <div className="grid gap-3 sm:grid-cols-2" aria-label={t('loadingProfile')}>
           {Array.from({ length: 4 }, (_, index) => (
@@ -62,7 +67,7 @@ function ProfilePanel() {
           <Field label={t('name')}>
             {`${profile.data.firstName} ${profile.data.lastName}`.trim() || '—'}
           </Field>
-          <Field label={t('email')}>{profile.data.email}</Field>
+          <Field label={t('email')}>{profile.data.email ?? '—'}</Field>
           <Field label={t('currency')}>{profile.data.currency ?? '—'}</Field>
           <Field label={t('country')}>{profile.data.countryCode ?? '—'}</Field>
           <Field label={t('emailVerified')}>{profile.data.emailVerified ? t('yes') : t('no')}</Field>
@@ -83,7 +88,7 @@ function BalancePanel() {
   const { openCashier } = useCashier();
   const t = useTranslations('account');
   return (
-    <Panel title={t('balance')}>
+    <Panel id="account-balance" title={t('balance')}>
       {balance.isPending ? (
         <Skeleton className="h-10 w-40 motion-reduce:animate-none" />
       ) : balance.data ? (

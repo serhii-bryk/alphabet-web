@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { act } from 'react';
+import type { PaymentMethodsResponse } from '@brand/contracts';
 import { createRoot, type Root } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NextIntlClientProvider } from 'next-intl';
@@ -28,7 +29,7 @@ const methods = {
   currency: 'EUR',
   balance: 40,
   depositMethods: [
-    { id: 'test-deposit', label: 'Test Deposit', minAmount: 1, maxAmount: 50, fields: [], test: true },
+    { id: 'test-deposit', label: 'Test Deposit', minAmount: 1, maxAmount: 50, fields: [], test: true, mock: false },
   ],
   withdrawMethods: [
     {
@@ -38,6 +39,7 @@ const methods = {
       maxAmount: 100,
       fields: [{ name: 'iban', label: 'IBAN', required: true }],
       test: false,
+      mock: false,
     },
   ],
 };
@@ -49,14 +51,17 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function installFetch(deposit?: (init?: RequestInit) => Promise<Response> | Response) {
+function installFetch(
+  deposit?: (init?: RequestInit) => Promise<Response> | Response,
+  paymentMethods: PaymentMethodsResponse = methods,
+) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.includes('/api/session')) return json(session);
       if (url.includes('/api/account/balance')) return json({ balance: 40, currency: 'EUR' });
-      if (url.includes('/api/payments/methods')) return json(methods);
+      if (url.includes('/api/payments/methods')) return json(paymentMethods);
       if (url.includes('/api/payments/deposit')) return deposit ? deposit(init) : json({ status: 'completed', paymentId: '11111111-1111-4111-8111-111111111111' });
       return json({ error: { code: 'provider_unavailable', message: 'Payments are temporarily unavailable' } }, 502);
     }),
@@ -191,6 +196,43 @@ describe('cashier', () => {
     const depositCall = vi.mocked(fetch).mock.calls.find((call) => String(call[0]).includes('/api/payments/deposit'));
     expect(String(depositCall?.[1]?.body)).toContain('"methodId":"test-deposit"');
     expect(String(depositCall?.[1]?.body)).toContain('"amount":20');
+  });
+
+  it('shows a development deposit as pending and does not treat it as paid', async () => {
+    installFetch(
+      (init) => {
+        const body = JSON.parse(String(init?.body ?? '{}')) as { methodId?: string };
+        expect(body.methodId).toBe('mock-card');
+        return json({ status: 'processing', paymentId: '11111111-1111-4111-8111-111111111111' });
+      },
+      {
+        currency: 'EUR',
+        balance: 40,
+        depositMethods: [
+          { id: 'mock-card', label: 'Card', minAmount: 10, maxAmount: 500, fields: [], test: false, mock: true },
+        ],
+        withdrawMethods: [
+          {
+            id: 'mock-bank',
+            label: 'Bank transfer',
+            minAmount: 10,
+            maxAmount: null,
+            fields: [{ name: 'account', label: 'Account reference', required: true }],
+            test: false,
+            mock: true,
+          },
+        ],
+      },
+    );
+    const view = await renderCashier();
+    roots.push(view.root);
+    await click('Deposit');
+    await text('Development');
+    await typeAmount('20');
+    await click('Continue');
+    await text('Development checkout. This deposit is pending and has not been paid.');
+    expect(document.body.textContent).not.toContain('Your deposit is complete.');
+    expect(view.invalidate).not.toHaveBeenCalled();
   });
 
   it('never renders Deposit for a guest, including before the session resolves', async () => {

@@ -54,12 +54,16 @@ function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === 'string';
 }
 
+function isSessionEmail(value: unknown): value is string | null {
+  return value === null || (typeof value === 'string' && value.length > 0);
+}
+
 export function parseAuthSession(body: unknown): AuthSession | null {
   if (
     !isRecord(body) ||
     body.authenticated !== true ||
     typeof body.playerId !== 'string' ||
-    typeof body.email !== 'string' ||
+    !isSessionEmail(body.email) ||
     !isNullableString(body.currency) ||
     typeof body.expiresAt !== 'string' ||
     Number.isNaN(Date.parse(body.expiresAt))
@@ -84,7 +88,7 @@ export function parsePlayerProfile(body: unknown): PlayerProfile | null {
   if (
     !isRecord(body) ||
     typeof body.playerId !== 'string' ||
-    typeof body.email !== 'string' ||
+    !isSessionEmail(body.email) ||
     typeof body.firstName !== 'string' ||
     typeof body.lastName !== 'string' ||
     !isNullableString(body.currency) ||
@@ -169,6 +173,79 @@ export async function login(input: LoginInput): Promise<AuthSession> {
   throw new AuthRequestError(
     expected && hasErrorCode(body, expected) ? expected : 'auth_unavailable',
   );
+}
+
+export interface TelegramWidgetUser {
+  id: number;
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date: number;
+  hash: string;
+}
+
+export interface AuthProviders {
+  telegram: { botId: string } | null;
+}
+
+const telegramErrorCodes = [
+  'external_auth_rejected',
+  'external_auth_unavailable',
+  'account_restricted',
+] as const;
+
+export async function fetchAuthProviders(signal?: AbortSignal): Promise<AuthProviders> {
+  const hidden: AuthProviders = { telegram: null };
+  try {
+    const response = await send('/api/auth/providers', { method: 'GET', signal }, () => new Error('providers'));
+    if (response.status !== 200) return hidden;
+    const body = await readJson(response);
+    if (!isRecord(body)) return hidden;
+    if (body.telegram === null) return hidden;
+    if (
+      isRecord(body.telegram) &&
+      typeof body.telegram.botId === 'string' &&
+      /^\d{5,16}$/.test(body.telegram.botId)
+    ) {
+      return { telegram: { botId: body.telegram.botId } };
+    }
+    return hidden;
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    return hidden;
+  }
+}
+
+export async function loginWithTelegram(user: TelegramWidgetUser): Promise<AuthSession> {
+  const payload: Record<string, string | number> = {
+    id: user.id,
+    auth_date: user.auth_date,
+    hash: user.hash,
+  };
+  for (const key of ['first_name', 'last_name', 'username', 'photo_url'] as const) {
+    const value = user[key];
+    if (typeof value === 'string') payload[key] = value;
+  }
+  const response = await send(
+    '/api/auth/telegram',
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    },
+    () => new AuthRequestError('external_auth_unavailable'),
+  );
+  const body = await readJson(response);
+  if (response.status === 200) {
+    const session = parseAuthSession(body);
+    if (session) return session;
+    throw new AuthRequestError('external_auth_unavailable');
+  }
+  for (const code of telegramErrorCodes) {
+    if (hasErrorCode(body, code)) throw new AuthRequestError(code);
+  }
+  throw new AuthRequestError('external_auth_unavailable');
 }
 
 export async function logout(): Promise<GuestSession> {

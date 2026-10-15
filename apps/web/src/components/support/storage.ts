@@ -1,4 +1,5 @@
-import type { SupportAction, SupportChatErrorCode } from '@brand/contracts';
+import type { SupportAction, SupportCatalogGame, SupportChatErrorCode, SupportChatMode, SupportFaqId } from '@brand/contracts';
+import { supportFaqIds } from '@brand/contracts';
 import { parseSupportAction } from './actions';
 
 const storageKey = 'alphabet.supportChat.v1';
@@ -8,6 +9,8 @@ export interface SupportTranscriptItem {
   role: 'user' | 'assistant';
   content: string;
   actions?: SupportAction[];
+  games?: SupportCatalogGame[];
+  related?: SupportFaqId[];
   escalate?: boolean;
   errorCode?: SupportChatErrorCode | 'network';
   retryText?: string;
@@ -15,6 +18,9 @@ export interface SupportTranscriptItem {
 
 export interface SupportTranscript {
   open: boolean;
+  mode: SupportChatMode;
+  draft: string;
+  topicsExpanded?: boolean;
   messages: SupportTranscriptItem[];
 }
 
@@ -36,13 +42,24 @@ export function readSupportSession(): SupportTranscript | null {
 
 export function writeSupportSession(value: SupportTranscript) {
   try {
-    const messages = value.messages.slice(-12).map((item) => ({
+    const messages = value.messages.slice(-8).map((item) => ({
       ...item,
-      content: redactSensitive(item.content).slice(0, 1000),
-      retryText: item.retryText ? redactSensitive(item.retryText).slice(0, 1000) : undefined,
+      content: redactSensitive(item.content).slice(0, 500),
+      retryText: item.retryText ? redactSensitive(item.retryText).slice(0, 500) : undefined,
       actions: item.actions?.filter((action) => parseSupportAction(action)),
+      games: item.games?.slice(0, 8),
+      related: item.related?.slice(0, 3),
     }));
-    sessionStorage.setItem(storageKey, JSON.stringify({ open: value.open, messages }));
+    sessionStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        open: value.open,
+        mode: value.mode,
+        draft: redactSensitive(value.draft).slice(0, 500),
+        topicsExpanded: value.topicsExpanded === true,
+        messages,
+      }),
+    );
   } catch {
     // The conversation still lives in memory for this page.
   }
@@ -79,7 +96,7 @@ export function buildHandoffSummary(input: {
 function parseTranscript(value: unknown): SupportTranscript | null {
   if (!isRecord(value) || typeof value.open !== 'boolean' || !Array.isArray(value.messages)) return null;
   const messages: SupportTranscriptItem[] = [];
-  for (const item of value.messages.slice(-12)) {
+  for (const item of value.messages.slice(-8)) {
     if (!isRecord(item) || (item.role !== 'user' && item.role !== 'assistant')) return null;
     if (typeof item.id !== 'string' || typeof item.content !== 'string') return null;
     const actions = Array.isArray(item.actions)
@@ -91,14 +108,48 @@ function parseTranscript(value: unknown): SupportTranscript | null {
     messages.push({
       id: item.id.slice(0, 80),
       role: item.role,
-      content: redactSensitive(item.content).slice(0, 1000),
+      content: redactSensitive(item.content).slice(0, 500),
       actions,
+      games: parseStoredGames(item.games),
+      related: parseStoredRelated(item.related),
       escalate: item.escalate === true,
       errorCode: isErrorCode(item.errorCode) ? item.errorCode : undefined,
-      retryText: typeof item.retryText === 'string' ? redactSensitive(item.retryText).slice(0, 1000) : undefined,
+      retryText: typeof item.retryText === 'string' ? redactSensitive(item.retryText).slice(0, 500) : undefined,
     });
   }
-  return { open: value.open, messages };
+  return {
+    open: value.open,
+    mode: value.mode === 'assistant' ? 'assistant' : 'support',
+    draft: typeof value.draft === 'string' ? redactSensitive(value.draft).slice(0, 500) : '',
+    topicsExpanded: value.topicsExpanded === true,
+    messages,
+  };
+}
+
+function parseStoredGames(value: unknown): SupportCatalogGame[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const games: SupportCatalogGame[] = [];
+  for (const item of value.slice(0, 8)) {
+    if (!isRecord(item) || typeof item.id !== 'string' || typeof item.slug !== 'string' || typeof item.title !== 'string') continue;
+    if (item.kind !== 'casino' && item.kind !== 'live') continue;
+    if (typeof item.demoPlayEnabled !== 'boolean' || typeof item.active !== 'boolean') continue;
+    games.push({
+      id: item.id,
+      slug: item.slug,
+      title: item.title.slice(0, 120),
+      kind: item.kind,
+      imageUrl: typeof item.imageUrl === 'string' ? item.imageUrl : null,
+      demoPlayEnabled: item.demoPlayEnabled,
+      active: item.active,
+    });
+  }
+  return games.length > 0 ? games : undefined;
+}
+
+function parseStoredRelated(value: unknown): SupportFaqId[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const related = value.filter((item): item is SupportFaqId => typeof item === 'string' && (supportFaqIds as readonly string[]).includes(item));
+  return related.length > 0 ? related.slice(0, 3) : undefined;
 }
 
 function isErrorCode(value: unknown): value is SupportTranscriptItem['errorCode'] {
@@ -108,6 +159,8 @@ function isErrorCode(value: unknown): value is SupportTranscriptItem['errorCode'
     value === 'ai_timeout' ||
     value === 'ai_response_invalid' ||
     value === 'support_unavailable' ||
+    value === 'rate_limited' ||
+    value === 'budget_exhausted' ||
     value === 'network'
   );
 }

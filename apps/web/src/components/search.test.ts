@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getNextFocusIndex } from './search';
+import { getNextFocusIndex } from './search-index';
 
 describe('getNextFocusIndex', () => {
   it('cycles forward and backward with wraparound', () => {

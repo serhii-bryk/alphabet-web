@@ -2,6 +2,7 @@
 
 import type { DemoPromptLevel } from './demo-play';
 import { useTranslations } from 'next-intl';
+import { GuestAcquisition } from '../auth/guest-acquisition';
 import { Button } from '../ui';
 
 
@@ -34,9 +35,11 @@ export function DemoPrompt({
         </p>
         <p className="mt-1 text-sm text-[var(--muted)]">{strong ? t('strongBody') : t('softBody')}</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button type="button" onClick={(event) => onRegister(event.currentTarget)}>
-            {t('register')}
-          </Button>
+          <GuestAcquisition>
+            <Button type="button" onClick={(event) => onRegister(event.currentTarget)}>
+              {t('register')}
+            </Button>
+          </GuestAcquisition>
           <Button type="button" variant="secondary" onClick={(event) => onSignIn(event.currentTarget)}>
             {t('signIn')}
           </Button>

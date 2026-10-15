@@ -4,6 +4,7 @@ import type { PaymentProvider, PlayerSession } from './index.js';
 import {
   createMemoryPaymentIntentStore,
   createPaymentUseCases,
+  isMockPaymentsEnabled,
   isTestDepositEnabled,
   resolveTestMaxAmount,
 } from './payments.js';
@@ -29,6 +30,7 @@ function platform(overrides: Partial<PlatformClient> = {}): PlatformClient {
     launchRealGame: vi.fn(),
     requestSportsLaunchTicket: vi.fn(),
     login: vi.fn(),
+    authenticateTelegram: vi.fn(),
     refresh: vi.fn(),
     logout: vi.fn(),
     getProfile: vi.fn(async () => ({
@@ -77,6 +79,12 @@ describe('payment config guards', () => {
     expect(isTestDepositEnabled('false', 'test')).toBe(false);
     expect(isTestDepositEnabled(undefined, 'test')).toBe(false);
   });
+
+  it('enables mock payments only outside production', () => {
+    expect(isMockPaymentsEnabled('true', 'development')).toBe(true);
+    expect(isMockPaymentsEnabled('true', 'production')).toBe(false);
+    expect(isMockPaymentsEnabled('false', 'development')).toBe(false);
+  });
 });
 
 describe('payment callbacks', () => {
@@ -99,6 +107,7 @@ describe('payment callbacks', () => {
       providerConfigured: true,
       testMode: false,
       testMaxAmount: 50,
+      mockMode: false,
     });
     const callback = {
       paymentId: '11111111-1111-4111-8111-111111111111',
@@ -136,6 +145,7 @@ describe('payment callbacks', () => {
       providerConfigured: true,
       testMode: false,
       testMaxAmount: 50,
+      mockMode: false,
     });
 
     expect(
@@ -149,5 +159,54 @@ describe('payment callbacks', () => {
     expect((await payments.status({ session, locale: 'en' }, '11111111-1111-4111-8111-111111111111')).status).toBe(
       'failed',
     );
+  });
+});
+
+describe('development mock payments', () => {
+  const config = { providerConfigured: false, testMode: false, testMaxAmount: 50, mockMode: true };
+
+  it('lists mock methods and leaves a deposit pending without a ledger credit', async () => {
+    const client = platform();
+    const payments = createPaymentUseCases(client, provider, createMemoryPaymentIntentStore(), config);
+    const methods = await payments.listMethods({ session, locale: 'en' });
+    expect(methods.depositMethods.map((method) => method.id)).toEqual(['mock-card']);
+    expect(methods.withdrawMethods.map((method) => method.id)).toEqual(['mock-bank']);
+    expect(methods.depositMethods[0]?.mock).toBe(true);
+    const result = await payments.deposit(
+      { session, locale: 'en' },
+      { methodId: 'mock-card', amount: 20, idempotencyKey: '33333333-3333-4333-8333-333333333333' },
+    );
+    expect(result.status).toBe('processing');
+    expect(client.deposit).not.toHaveBeenCalled();
+    expect(provider.init).not.toHaveBeenCalled();
+    expect(provider.submit).not.toHaveBeenCalled();
+  });
+
+  it('keeps a mock withdrawal pending without reserving the wallet', async () => {
+    const client = platform();
+    const payments = createPaymentUseCases(client, provider, createMemoryPaymentIntentStore(), config);
+    const result = await payments.withdraw(
+      { session, locale: 'en' },
+      {
+        methodId: 'mock-bank',
+        amount: 20,
+        idempotencyKey: '44444444-4444-4444-8444-444444444444',
+        details: { account: 'dev-account' },
+      },
+    );
+    expect(result.status).toBe('processing');
+    expect((await payments.status({ session, locale: 'en' }, result.paymentId)).status).toBe('processing');
+    expect(client.requestWithdrawal).not.toHaveBeenCalled();
+    await expect(
+      payments.withdraw(
+        { session, locale: 'en' },
+        {
+          methodId: 'mock-bank',
+          amount: 150,
+          idempotencyKey: '55555555-5555-4555-8555-555555555555',
+          details: { account: 'dev-account' },
+        },
+      ),
+    ).rejects.toMatchObject({ code: 'insufficient_balance' });
   });
 });

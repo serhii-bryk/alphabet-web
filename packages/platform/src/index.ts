@@ -270,7 +270,7 @@ export const platformCurrenciesResponseSchema = z.object({
 
 const platformAuthProfileSchema = z.object({
   id: z.number().int().positive(),
-  email: z.string().min(1),
+  email: z.string().min(1).nullable(),
   currency: platformCurrencySchema.nullable(),
   first_name: z.string().optional(),
   last_name: z.string().optional(),
@@ -390,6 +390,23 @@ export interface PlatformLoginInput {
   domain?: string;
 }
 
+export interface PlatformTelegramWidgetPayload {
+  id: number;
+  auth_date: number;
+  hash: string;
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+}
+
+export interface PlatformTelegramLoginInput {
+  payload: PlatformTelegramWidgetPayload;
+  ipNumber?: string;
+  browser?: string;
+  domain?: string;
+}
+
 export interface PlatformRegistrationInput {
   email: string;
   first_name: string;
@@ -422,6 +439,7 @@ export interface PlatformClient {
   getCategories(): Promise<PlatformCategory[]>;
   launchDemoGame(gameId: string): Promise<PlatformGameLaunch>;
   login(input: PlatformLoginInput): Promise<PlatformLoginResponse>;
+  authenticateTelegram(input: PlatformTelegramLoginInput): Promise<PlatformLoginResponse>;
   refresh(playerId: number, accessToken: string): Promise<PlatformRefreshResponse>;
   logout(playerId: number, accessToken: string): Promise<PlatformLogoutResponse>;
   getProfile(playerId: number, accessToken: string): Promise<PlatformProfileResponse>;
@@ -505,6 +523,15 @@ export function readPlatformConfig(
     baseUrl: parsed.FINAL_PLATFORM_API_URL,
     apiKey: parsed.FINAL_PLATFORM_API_KEY,
     apiSecret: parsed.FINAL_PLATFORM_API_SECRET,
+  };
+}
+
+function loginSession(result: z.infer<typeof platformLoginResponseSchema>): PlatformLoginResponse {
+  return {
+    profile: result.profile,
+    access_token: result.access_token,
+    token_type: result.token_type,
+    expires_in: result.expires_in,
   };
 }
 
@@ -700,12 +727,23 @@ export function createPlatformClient(options: CreatePlatformClientOptions): Plat
       if (input.browser) json.browser = input.browser;
       if (input.domain) json.domain = input.domain;
       const result = await request('POST', '/player/login', platformLoginResponseSchema, { json });
-      return {
-        profile: result.profile,
-        access_token: result.access_token,
-        token_type: result.token_type,
-        expires_in: result.expires_in,
+      return loginSession(result);
+    },
+    async authenticateTelegram(input) {
+      const json: Record<string, unknown> = {
+        flow: 'login_widget',
+        payload: input.payload,
       };
+      if (input.ipNumber) json.ip_number = input.ipNumber;
+      if (input.browser) json.browser = input.browser;
+      if (input.domain) json.domain = input.domain;
+      const result = await request(
+        'POST',
+        '/player/login/telegram',
+        platformLoginResponseSchema,
+        { json },
+      );
+      return loginSession(result);
     },
     refresh(playerId, accessToken) {
       return request('POST', playerActionPath(playerId, 'refresh'), platformRefreshResponseSchema, {

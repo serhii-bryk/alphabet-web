@@ -211,6 +211,8 @@ describe('catalog routes', () => {
     '/catalog/games?limit=101',
     '/catalog/games?limit=20&per_page=20',
     '/catalog/games?search=',
+    '/catalog/games?page=1001',
+    `/catalog/games?search=${'a'.repeat(201)}`,
     `/catalog/games?provider=${'x'.repeat(201)}`,
     '/catalog/games?type=roulette',
   ])('rejects invalid games query %s without calling Platform', async (url) => {

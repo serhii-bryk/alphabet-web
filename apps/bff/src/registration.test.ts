@@ -54,6 +54,7 @@ function useCases(overrides: Partial<RegistrationUseCases> = {}): RegistrationUs
 function authUseCases(overrides: Partial<AuthUseCases> = {}): AuthUseCases {
   return {
     login: vi.fn(async () => session),
+    loginWithTelegram: vi.fn(),
     refreshIfNeeded: vi.fn(async () => ({ action: 'keep' as const, session })),
     logout: vi.fn(async () => undefined),
     ...overrides,
