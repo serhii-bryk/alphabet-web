@@ -7,6 +7,12 @@ alwaysApply: false
 # Testing
 
 - Use Vitest for unit and integration tests and Playwright for browser behavior.
+- Run files, not packages. From `new-brand-test`: `pnpm --filter @brand/domain test -- src/auth.test.ts src/responsible-gaming.test.ts`. The same form works for `@brand/platform`, `@brand/bff`, and `@brand/web`.
+- Root `pnpm test` is `turbo test`. The `test` task depends on `^test`, so it runs every workspace suite and each dependency suite first. That command is for a full CI-style run, not a feature.
+- A package `test` script with no extra path runs every `*.test.ts` in that package. Platform and domain have no Vitest config that narrows this.
+- Domain stubs typed as `Partial<PlatformClient>` still typecheck when a client method is added. Typecheck that package. Execute the stub file only when its assertions changed.
+- Auth, session, payments, security, and responsible gaming: run the changed use-case test, the BFF route test, and the browser caller test once. Do not run those files again from a reviewer.
+- Playwright: `pnpm --filter @brand/web exec playwright test e2e/<spec>.spec.ts` for the flow that changed. `test:e2e` with no file runs the whole browser suite.
 - Test observable contracts and behavior, not implementation details.
 - For UI changes, verify mobile and desktop plus navigation, loading, errors, stale state, invalid input, accessibility basics, and reduced motion where relevant.
 - Add a regression test for fixed bugs when practical.
