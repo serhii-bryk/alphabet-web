@@ -180,6 +180,14 @@ function mapLoginFailure(error: unknown): AuthError {
   if (error instanceof PlatformClientError && error.code === 'request_failed' && error.status === 422) {
     return new AuthError('invalid_login');
   }
+  if (
+    error instanceof PlatformClientError &&
+    error.code === 'request_failed' &&
+    error.status === 403 &&
+    error.platformCode === 'player_has_excluded'
+  ) {
+    return new AuthError('account_restricted');
+  }
   return new AuthError('auth_unavailable');
 }
 

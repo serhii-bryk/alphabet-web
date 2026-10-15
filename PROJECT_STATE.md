@@ -4,7 +4,7 @@ Source of truth for the current product. Read this before reconstructing history
 
 Update this file at the end of every completed milestone, and whenever an important architecture or integration decision changes. Record names and decisions only. Never store secrets, passwords, API keys, tokens, HMAC material, or personal test-account credentials.
 
-Last updated: 2026-10-15 (Lightweight execution feedback in Fast Development Mode).
+Last updated: 2026-10-15 (Responsible gaming Player Control Center).
 
 ## Product goal
 
@@ -53,7 +53,12 @@ Fast Development Mode, coordinated by `.cursor/agents/orchestrator.md`.
 - Payments core: cashier deposit and withdrawal through the BFF. The browser never calls the payment provider or Platform directly. A confirmed deposit credits the wallet only from the BFF after a trusted captured callback. Test deposit is a separate guarded path. Transaction history is not built.
 - Registration UI and BFF: two-step signup. A successful Platform register is followed by the existing login flow, which seals the httpOnly session. Email verification is not required. One stage call with `SESSION_SECRET` set created an account, logged in, and returned an authenticated session while `emailVerified` was false. That call is not part of CI.
 - Player casino personalization stored on Platform. Favorites, last played, and most played use the sealed session player id. The browser calls `/api/player/favorites`, `/api/player/last-played`, and `/api/player/most-played` and never sends a player id. Favorites are the full Platform list. Last played and most played use Platform’s paginator (`page`, `limit`, `order`, and the confirmed date or count filters). Pages are `/favorites`, `/recently-played`, and `/most-played` (no locale prefix). Guests get the existing sign-in dialog from a heart and a sign-in prompt on those pages. Signed-in hearts are optimistic, shared across cards, game info, and the game toolbar, and roll back on failure. The default casino lobby shows compact Recently Played and Favorites rails, then the existing discovery grid, then Most Played. Empty rails stay hidden. A successful real launch refreshes last played and most played. Logout drops those caches.
-- In-product support chat. The browser calls `POST /api/support/chat` and `GET /api/support/channels`. The BFF calls the AI provider. Confirmed product facts live in `apps/bff/src/support/knowledge.ts`. Answers can include only the safe actions `navigate`, `open_cashier`, `open_login`, `open_registration`, and `open_human_support`. The active conversation is kept in `sessionStorage` (`alphabet.supportChat.v1`). English and Arabic are supported, and Arabic uses a right-to-left panel. Human handoff shows only configured contacts. Support cannot move money or change an account.
+- In-product support chat. The browser calls `POST /api/support/chat` and `GET /api/support/channels`. The BFF calls the AI provider. Confirmed product facts live in `apps/bff/src/support/knowledge.ts`. Answers can include only the safe actions `navigate`, `open_cashier`, `open_login`, `open_registration`, and `open_human_support`. The active conversation is kept in `sessionStorage` (`alphabet.supportChat.v1`). English and Arabic are supported, and Arabic uses a right-to-left panel. Human handoff shows only configured contacts. Support can explain reality check, cool-off, and self-exclusion. It cannot change, cancel, or submit them.
+- Responsible gaming at `/responsible-gaming` (Player Control Center). Guests can read the live Platform catalog. Signed-in players can save a reality-check interval and submit cool-off or self-exclusion. Sidebar “Play safe”, the footer, and the signed-in account section link here.
+  - Reality check: `GET /casino/realityCheckSettings` returns allowed minutes, including `0` (off). `GET` and `POST /player/:id/reality-check` read and save `{ value }`. The header session timer uses the newest Platform login (`GET /player/:id/logins`, `limit=1`, ordered `created_at` desc, `login_at` only). IP and browser are not sent to the web app. If login history is missing, the timer is labeled as device time and is not enforcement. The reminder is a client prompt from the saved interval. Acknowledgement is stored in `localStorage` (`alphabet.playerControl.v1`) so a remount or another tab does not restart it. `0` shows no reminder. Sign-in and sign-out clear that device fallback and the session-clock cache.
+  - Cool-off and self-exclusion: durations come only from `GET /casino/coolOffSettings` and `GET /casino/selfexclusionSettings`. A guest read of the running Stage catalog on 2026-10-15 showed cool-off 24 hours, 7 days, 30 days, and 3 months, plus reasons, and self-exclusion 6 months, 1 year, 5 years, and Permanent. Those `text` values are shown as Platform sent them, including on the Arabic page. `POST /player/:id/exclusion` takes `period_id` and, for cool-off only, an optional `reason_id`. Periods with `date_selector` are refused before the POST because the partner body has no custom date and a null duration would be permanent. Self-exclusion does not send a reason. There is no partner cancel and no partner read of the current exclusion. A successful exclusion revokes sessions, so the BFF clears `brand_session`. The page keeps an informational receipt in `sessionStorage` (`alphabet.playerControl.receipt.v1`) until the next successful login. That receipt is not protection.
+  - Login `403` `player_has_excluded` maps to `account_restricted`. Real launch of `player_not_active` or `player_has_excluded` uses the same code and clears the session cookie. An `account_restricted` response from a responsible-gaming route also clears the cookie. Sports launch has no separate restricted code; a revoked session fails the next authenticated sports call.
+  - Not done against Stage: saving a reality-check interval, posting a cool-off or self-exclusion, or signing in as a restricted player. Do not post an exclusion except on a disposable Stage account. Deposit limits are not in this partner API.
 
 ## Current integrations
 
@@ -76,6 +81,10 @@ All paths are under the configured `/api/v1` base.
 - `GET /player/:id/games/last-played`, `GET /player/:id/games/most-played`
 - `POST /transactions/deposit` — the only wallet credit. Called after a captured deposit callback, and for the guarded test deposit.
 - `POST /transactions/withdraw/request`, `POST /transactions/withdraw/approve`, `POST /transactions/withdraw/confirm`, `POST /transactions/withdraw/rollback`
+- `GET /casino/coolOffSettings`, `GET /casino/selfexclusionSettings`, `GET /casino/realityCheckSettings` — partner HMAC, no player JWT
+- `GET /player/:id/reality-check`, `POST /player/:id/reality-check` with `{ value }`
+- `POST /player/:id/exclusion` with `{ period_id, reason_id? }`
+- `GET /player/:id/logins` — partner HMAC, newest `login_at` only; IP and browser stay on the server
 
 Registration sends the confirmed snake_case body: `email`, `password`, `country`, `currency`, `first_name`, `last_name`, `date_of_birth` (`YYYY-MM-DD`), `address`, `city`, `postal_code`, `phone_prefix` (digits, no leading `+`), `phone`. No IP, browser, or domain field is required on register. `POST /player/register` returns `{ profile }` and no access token. The BFF then calls the existing `POST /player/login` plus profile flow and seals `brand_session`. If that login fails, the account still exists, no cookie is set, and the response is `sign_in_unavailable`.
 
@@ -128,6 +137,7 @@ Web:
 - Sportsbook is not integrated. Promotions are not a real offer system.
 - Registration’s public errors stay coarse on purpose. Upstream detail is only in the server log described below.
 - Social sign-in is not implemented.
+- Responsible gaming has no partner endpoint to read the current exclusion or to end one early. After a successful exclusion the session is cleared; the on-page receipt does not survive a later login and is not enforcement. Live Stage writes (reality-check save, cool-off, self-exclusion) have not been executed. Profile, balance, and payments do not have their own restricted-account mapper; they rely on Platform session revocation.
 
 ## Current test setup
 
@@ -154,7 +164,7 @@ Web:
 
 ## Next recommended milestone
 
-Casino personalization is in place. Transaction history is still deferred. Do not start another milestone until that is explicitly requested. A stage login with the stored test account was rejected as invalid credentials on 2026-10-13, so add, remove, and play-history were not confirmed against live Platform data. Email verification is not the next milestone.
+Responsible gaming is in place. Transaction history is still deferred. Do not start another milestone until that is explicitly requested. A stage login with the stored test account was rejected as invalid credentials on 2026-10-13, so add, remove, and play-history were not confirmed against live Platform data. Email verification is not the next milestone.
 
 ## Payments
 

@@ -84,6 +84,9 @@ export function mapGameLaunchFailure(error: unknown): GameLaunchError {
 export function mapRealLaunchFailure(error: unknown): GameLaunchError {
   if (error instanceof PlatformClientError && error.code === 'request_failed') {
     const platformCode = error.platformCode;
+    if (platformCode === 'player_has_excluded' || platformCode === 'player_not_active') {
+      return new GameLaunchError('account_restricted');
+    }
     if (error.status === 401) return new GameLaunchError('auth_required');
     if (
       error.status === 404 &&
@@ -145,6 +148,8 @@ export {
   PersonalizationError,
 } from './personalization.js';
 export type { PersonalizationUseCases, PlayedListQuery } from './personalization.js';
+export { createResponsibleGamingUseCases, ResponsibleGamingError } from './responsible-gaming.js';
+export type { ResponsibleGamingUseCases } from './responsible-gaming.js';
 
 export function createGameLaunchUseCases(platform: PlatformClient): GameLaunchUseCases {
   return {

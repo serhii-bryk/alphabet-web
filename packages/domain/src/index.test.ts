@@ -40,6 +40,13 @@ function makePlatform(launchDemoGame: PlatformClient['launchDemoGame']): Platfor
     removeFavorite: vi.fn(),
     lastPlayed: vi.fn(),
     mostPlayed: vi.fn(),
+    getRealityCheckSettings: vi.fn(),
+    getPlayerRealityCheck: vi.fn(),
+    setPlayerRealityCheck: vi.fn(),
+    getCoolOffSettings: vi.fn(),
+    getSelfExclusionSettings: vi.fn(),
+    excludePlayer: vi.fn(),
+    getPlayerLogins: vi.fn(),
   };
 }
 
@@ -103,7 +110,8 @@ describe('launchReal', () => {
     [new PlatformClientError('request_failed', 404, 'token_missing'), 'auth_required', true],
     [new PlatformClientError('request_failed', 401, 'invalid_signature'), 'auth_required', false],
     [new PlatformClientError('request_failed', 403, 'game_unavailable'), 'game_unavailable', false],
-    [new PlatformClientError('request_failed', 403, 'player_not_active'), 'game_unavailable', false],
+    [new PlatformClientError('request_failed', 403, 'player_not_active'), 'account_restricted', false],
+    [new PlatformClientError('request_failed', 403, 'player_has_excluded'), 'account_restricted', false],
     [new PlatformClientError('request_failed', 404, 'game_not_found'), 'game_not_found', false],
     [new PlatformClientError('request_failed', 405, 'game_not_found'), 'game_not_found', false],
     [new PlatformClientError('request_failed', 422, 'invalid_game_play_mode'), 'launch_unavailable', false],

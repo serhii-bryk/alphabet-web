@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import type { GameLaunchErrorCode } from '@brand/contracts';
-import type { AccountUseCases, AuthUseCases, CatalogUseCases, GameLaunchUseCases, PaymentIntentStore, PaymentUseCases, PersonalizationUseCases, RefreshIfNeededResult, RegistrationUseCases, SportsLaunchUseCases } from '@brand/domain';
+import type { AccountUseCases, AuthUseCases, CatalogUseCases, GameLaunchUseCases, PaymentIntentStore, PaymentUseCases, PersonalizationUseCases, RefreshIfNeededResult, RegistrationUseCases, ResponsibleGamingUseCases, SportsLaunchUseCases } from '@brand/domain';
 import {
   createAccountUseCases,
   createAuthUseCases,
@@ -9,6 +9,7 @@ import {
   createPaymentUseCases,
   createPersonalizationUseCases,
   createRegistrationUseCases,
+  createResponsibleGamingUseCases,
   createSportsLaunchUseCases,
   GameLaunchError,
 } from '@brand/domain';
@@ -19,6 +20,7 @@ import { cors } from 'hono/cors';
 import { z } from 'zod';
 import { isAccountPath, registerAccountRoutes } from './account-routes.js';
 import { isPersonalizationPath, registerPersonalizationRoutes } from './personalization-routes.js';
+import { isResponsibleGamingPath, registerResponsibleGamingRoutes } from './responsible-gaming-routes.js';
 import { applyResolvedSession, isAuthPath, registerAuthRoutes, resolvePlayerSession } from './auth-routes.js';
 import { createFinalpayClient } from './finalpay.js';
 import { createFilePaymentIntentStore } from './payment-intents.js';
@@ -145,6 +147,7 @@ const gameLaunchErrors = {
   game_not_found: { status: 404, message: 'Game not found' },
   demo_unavailable: { status: 422, message: 'Demo play is not available for this game' },
   game_unavailable: { status: 403, message: 'This game is unavailable' },
+  account_restricted: { status: 403, message: 'This account is restricted' },
   auth_required: { status: 401, message: 'Sign in to play for real money' },
   launch_unavailable: { status: 502, message: 'Game launch is unavailable' },
 } as const satisfies Record<GameLaunchErrorCode, { status: number; message: string }>;
@@ -295,7 +298,10 @@ export function createApp(options: CreateAppOptions = {}) {
         ),
       );
     } catch (error) {
-      if (error instanceof GameLaunchError && error.sessionEnded) {
+      if (
+        error instanceof GameLaunchError &&
+        (error.sessionEnded || error.code === 'account_restricted')
+      ) {
         c.header('Set-Cookie', clearSessionCookieHeader(secure));
       }
       return launchError(error instanceof GameLaunchError ? error.code : 'launch_unavailable');
@@ -312,6 +318,10 @@ export function createApp(options: CreateAppOptions = {}) {
   const getPersonalization = () =>
     (personalization ??= createPersonalizationUseCases(getPlatform()));
   registerPersonalizationRoutes(app, { ...sessionDependencies, getPersonalization, inflight });
+  let responsibleGaming: ResponsibleGamingUseCases | undefined;
+  const getResponsibleGaming = () =>
+    (responsibleGaming ??= createResponsibleGamingUseCases(getPlatform()));
+  registerResponsibleGamingRoutes(app, { ...sessionDependencies, getResponsibleGaming, inflight });
   const paymentsConfig = readPaymentsConfig(env);
   let payments: PaymentUseCases | undefined;
   const getPayments = () => {
@@ -398,6 +408,20 @@ export function createApp(options: CreateAppOptions = {}) {
       return new Response(
         JSON.stringify({
           error: { code: 'personalization_unavailable', message: 'Personalization is unavailable' },
+        }),
+        {
+          status: 502,
+          headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+        },
+      );
+    }
+    if (isResponsibleGamingPath(c.req.path)) {
+      return new Response(
+        JSON.stringify({
+          error: {
+            code: 'responsible_gaming_unavailable',
+            message: 'Responsible gaming is unavailable',
+          },
         }),
         {
           status: 502,

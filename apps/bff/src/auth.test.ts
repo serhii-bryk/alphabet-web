@@ -187,6 +187,26 @@ describe('auth routes', () => {
   });
 
   it.each([
+    [403, 'player_has_excluded', 403, 'account_restricted', 'This account is restricted'],
+    [403, 'player_login_unavailable', 502, 'auth_unavailable', 'Sign-in is unavailable'],
+  ] as const)('maps login %i %s to %s', async (platformStatus, platformCode, status, code, message) => {
+    const fetcher = vi.fn(async () =>
+      Response.json({ message: 'hidden upstream', code: platformCode }, { status: platformStatus }),
+    );
+    const app = createApp({ env: platformEnv, fetch: fetcher, now: () => start });
+    const response = await app.request('/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'player@example.com', password }),
+    });
+    const text = await response.text();
+    expect(response.status).toBe(status);
+    expect(JSON.parse(text)).toEqual({ error: { code, message } });
+    expect(text).not.toContain('hidden upstream');
+    expect(text).not.toContain(platformCode);
+  });
+
+  it.each([
     ['missing body', { 'content-type': 'application/json' }, ''],
     ['short password', { 'content-type': 'application/json' }, JSON.stringify({ email: 'player@example.com', password: 'short' })],
     ['bad email', { 'content-type': 'application/json' }, JSON.stringify({ email: 'not-an-email', password })],

@@ -52,6 +52,7 @@ describe('LoginForm', () => {
     ['invalid_credentials', 'The email or password is incorrect.'],
     ['invalid_login', 'Enter a valid email and a password of at least 8 characters.'],
     ['auth_unavailable', 'Sign-in is unavailable. Please try again.'],
+    ['account_restricted', 'This account is cooled off or self-excluded. You cannot sign in until that period ends.'],
   ] as const)('renders the %s message inline', (code, message) => {
     const html = renderUi(<LoginForm pending={false} error={code} onSubmit={noop} />);
     expect(html).toContain('role="alert"');

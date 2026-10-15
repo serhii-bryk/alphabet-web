@@ -151,6 +151,7 @@ export type GameLaunchErrorCode =
   | 'game_not_found'
   | 'demo_unavailable'
   | 'game_unavailable'
+  | 'account_restricted'
   | 'auth_required'
   | 'launch_unavailable';
 
@@ -175,6 +176,7 @@ export type SessionResponse = AuthSession | GuestSession;
 export type AuthErrorCode =
   | 'invalid_credentials'
   | 'invalid_login'
+  | 'account_restricted'
   | 'auth_unavailable'
   | 'session_ended';
 
@@ -410,4 +412,71 @@ export type SupportChatErrorCode =
 
 export interface SupportChatErrorResponse {
   error: { code: SupportChatErrorCode; message: string };
+}
+
+/** Minutes the partner allows, including 0 (reminders off). From GET /casino/realityCheckSettings. */
+export interface ResponsibleGamingCatalog {
+  realityCheckIntervals: number[];
+  coolOffPeriods: ResponsibleGamingPeriod[];
+  coolOffReasons: CoolOffReason[];
+  selfExclusionPeriods: ResponsibleGamingPeriod[];
+}
+
+export interface ResponsibleGamingPeriod {
+  id: number;
+  /** Display text exactly as Platform sent it. Do not translate or rewrite. */
+  text: string;
+  /** Platform may allow a custom end date. This partner body cannot send one. */
+  dateSelector: boolean;
+}
+
+export interface CoolOffReason {
+  id: number;
+  text: string;
+}
+
+export interface RealityCheckPreference {
+  intervalMinutes: number;
+}
+
+/** Newest Platform login time. Device time is not a substitute and is not returned here. */
+export interface SessionClock {
+  startedAt: string | null;
+  source: 'platform_login' | 'unavailable';
+}
+
+export type ExclusionKind = 'cool_off' | 'self_exclusion';
+
+export interface ExclusionResult {
+  kind: ExclusionKind;
+  periodText: string;
+  reasonText: string | null;
+  /** Platform player status, for example CoolOff or SelfExclusion. */
+  status: string;
+  expiresAt: string | null;
+  createdAt: string | null;
+  /** Platform revokes sessions. The BFF has cleared the cookie. */
+  sessionEnded: true;
+}
+
+export interface CoolOffRequest {
+  periodId: number;
+  reasonId?: number;
+}
+
+export interface SelfExclusionRequest {
+  periodId: number;
+}
+
+export type ResponsibleGamingErrorCode =
+  | 'session_ended'
+  | 'auth_required'
+  | 'responsible_gaming_unavailable'
+  | 'invalid_interval'
+  | 'invalid_period'
+  | 'invalid_reason'
+  | 'account_restricted';
+
+export interface ResponsibleGamingErrorResponse {
+  error: { code: ResponsibleGamingErrorCode; message: string };
 }

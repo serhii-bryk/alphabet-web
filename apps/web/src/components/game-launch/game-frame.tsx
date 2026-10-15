@@ -113,6 +113,10 @@ export function GameFrame({
       title: mode === 'demo' ? t('failedDemo') : t('failedReal'),
       body: t('errorLaunchBody'),
     },
+    account_restricted: {
+      title: t('errorRestrictedTitle'),
+      body: t('errorRestrictedBody'),
+    },
   };
 
   return (

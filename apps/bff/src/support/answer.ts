@@ -65,7 +65,7 @@ function systemPrompt(
     'Never claim a payment succeeded. Never credit, debit, refund, or change an account. You only suggest the allowed actions.',
     'Do not put URLs in the message. Navigation happens only through allowed actions.',
     `Reply in ${language} unless the player is clearly writing in the other supported language.`,
-    'If the player wants to self-exclude, cool off, restrict gambling, or set limits, explain the responsible-gaming facts, do not encourage more play, and escalate.',
+    'If the player asks about reality check, cool-off, self-exclusion, limits, or stopping play, explain only the confirmed responsible-gaming facts. Do not change, cancel, or submit a reality check, cool-off, or self-exclusion, and do not invent an action that does. Do not encourage more play. Escalate when the player wants a person to act for them.',
     'Set escalate to true and include open_human_support when the player asks for a person, a payment or withdrawal cannot be resolved here, account access still fails, verification needs staff, a game or sportsbook problem is outside this knowledge, the same problem was repeated, or you are not confident.',
     repeated
       ? 'The player has sent several messages. If confirmed knowledge does not add a new step, escalate.'

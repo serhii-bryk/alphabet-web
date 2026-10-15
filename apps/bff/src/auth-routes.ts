@@ -21,6 +21,7 @@ import {
 const authMessages = {
   invalid_credentials: 'The email or password is incorrect',
   invalid_login: 'Enter a valid email and password',
+  account_restricted: 'This account is restricted',
   auth_unavailable: 'Sign-in is unavailable',
   session_ended: 'Your session has ended',
 } as const satisfies Record<AuthErrorCode, string>;
@@ -47,6 +48,7 @@ const authErrorSchema = z.object({
     code: z.enum([
       'invalid_credentials',
       'invalid_login',
+      'account_restricted',
       'auth_unavailable',
       'session_ended',
     ]),
@@ -256,9 +258,12 @@ function shareRefresh(
   return promise;
 }
 
-function loginFailureCode(error: unknown): 'invalid_credentials' | 'invalid_login' | 'auth_unavailable' {
+function loginFailureCode(
+  error: unknown,
+): 'invalid_credentials' | 'invalid_login' | 'auth_unavailable' | 'account_restricted' {
   if (error instanceof AuthError && error.code === 'invalid_credentials') return 'invalid_credentials';
   if (error instanceof AuthError && error.code === 'invalid_login') return 'invalid_login';
+  if (error instanceof AuthError && error.code === 'account_restricted') return 'account_restricted';
   return 'auth_unavailable';
 }
 
@@ -273,9 +278,16 @@ function originRejected(c: Context): Response {
 
 function authFailure(
   c: Context,
-  code: 'invalid_credentials' | 'invalid_login' | 'auth_unavailable',
+  code: 'invalid_credentials' | 'invalid_login' | 'auth_unavailable' | 'account_restricted',
 ): Response {
-  const status = code === 'invalid_credentials' ? 401 : code === 'invalid_login' ? 400 : 502;
+  const status =
+    code === 'account_restricted'
+      ? 403
+      : code === 'invalid_credentials'
+        ? 401
+        : code === 'invalid_login'
+          ? 400
+          : 502;
   return c.json(
     authErrorSchema.parse({ error: { code, message: authMessages[code] } }),
     status,
