@@ -1,0 +1,18 @@
+# One Netlify site for this repo. Paths are relative to the repository root.
+# In the Netlify UI, leave the base directory empty and set the package directory to apps/web.
+# Leave the publish directory empty so the Next.js runtime can set it.
+
+[build]
+command = "pnpm build"
+
+[build.environment]
+NODE_VERSION = "20"
+PNPM_FLAGS = "--shamefully-hoist"
+# Demo guards. The function clears the same switches again at runtime.
+AI_CHAT_ENABLED = "false"
+PAYMENTS_TEST_MODE = "false"
+PAYMENTS_MOCK_MODE = "false"
+
+[functions]
+directory = "apps/bff/netlify"
+node_bundler = "esbuild"

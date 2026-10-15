@@ -3,6 +3,7 @@ import {
   getCatalogLobby,
   getCategoryFilterValue,
   parseCatalogFilters,
+  resolveBffBaseUrl,
   toCatalogQuery,
 } from './catalog';
 
@@ -56,6 +57,39 @@ describe('catalog data access', () => {
 
     expect(fetcher).toHaveBeenCalledWith(
       'http://bff.internal:4000/catalog/lobby?search=cards&type=slots',
+      expect.objectContaining({ cache: 'no-store' }),
+    );
+  });
+
+  it('calls this deploy at /api when Netlify is serving the site', async () => {
+    vi.stubEnv('NETLIFY', 'true');
+    vi.stubEnv('BFF_INTERNAL_URL', 'http://localhost:4000');
+    vi.stubEnv('DEPLOY_PRIME_URL', 'https://deploy-preview--alphabet.netlify.app/');
+    const fetcher = vi.fn(async () =>
+      Response.json({
+        promotions: [],
+        categories: [],
+        sections: [{ id: 'games', title: 'Games', games: [] }],
+        providers: [],
+        pagination: {
+          page: 1,
+          perPage: 20,
+          total: 0,
+          lastPage: 0,
+          from: null,
+          to: null,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        },
+      }),
+    );
+    vi.stubGlobal('fetch', fetcher);
+
+    await getCatalogLobby('slots');
+
+    expect(resolveBffBaseUrl()).toBe('https://deploy-preview--alphabet.netlify.app/api');
+    expect(fetcher).toHaveBeenCalledWith(
+      'https://deploy-preview--alphabet.netlify.app/api/catalog/lobby?type=slots',
       expect.objectContaining({ cache: 'no-store' }),
     );
   });

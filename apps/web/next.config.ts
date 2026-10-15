@@ -8,6 +8,8 @@ const config: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? '.next',
   transpilePackages: ['@brand/contracts', '@brand/config'],
   async rewrites() {
+    // On Netlify, /api/* is the Hono function. A rewrite to localhost would take those requests.
+    if (process.env.NETLIFY === 'true') return [];
     return [{ source: '/api/:path*', destination: `${bffUrl}/:path*` }];
   },
 };

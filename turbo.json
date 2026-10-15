@@ -2,7 +2,11 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "dev": { "cache": false, "persistent": true },
-    "build": { "dependsOn": ["^build"], "outputs": [".next/**", "!.next/cache/**", "dist/**"] },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "env": ["NETLIFY", "BFF_INTERNAL_URL", "DEPLOY_PRIME_URL", "DEPLOY_URL", "URL"]
+    },
     "typecheck": { "dependsOn": ["^typecheck"] },
     "lint": { "dependsOn": ["^lint"] },
     "test": { "dependsOn": ["^test"], "outputs": ["coverage/**"] }

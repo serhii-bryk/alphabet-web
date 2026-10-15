@@ -4,7 +4,7 @@ Source of truth for the current product. Read this before reconstructing history
 
 Update this file at the end of every completed milestone, and whenever an important architecture or integration decision changes. Record names and decisions only. Never store secrets, passwords, API keys, tokens, HMAC material, or personal test-account credentials.
 
-Last updated: 2026-10-15 (Fast Development Mode 2.0).
+Last updated: 2026-10-15 (Netlify demo deploy).
 
 ## Product goal
 
@@ -24,6 +24,8 @@ pnpm workspace rooted at `new-brand-test`. Install dependencies once there with 
 Dependency direction: browser → BFF → domain → platform. `apps/web` must not import `@brand/platform`, wire types, or server config.
 
 Local run from `new-brand-test`: `pnpm dev` starts web on port 3000 and BFF on port 4000. The BFF dev script must be `tsx watch` first, then flags. `tsx --env-file=… watch` treats `watch` as a filename and fails.
+
+Netlify demo is one site from GitHub `main`. The package directory is `apps/web`. The build command is `pnpm build` from the repo root. The web `build` task passes `NETLIFY`, `BFF_INTERNAL_URL`, `URL`, `DEPLOY_PRIME_URL`, and `DEPLOY_URL` through Turborepo so Next can see them. Next.js SSR stays on Netlify’s Next.js runtime. `apps/bff/netlify/bff.ts` runs the existing Hono app at `/api/*`. Local `pnpm dev` still rewrites `/api/*` to `BFF_INTERNAL_URL` and strips that prefix. On Netlify that rewrite is omitted, and server-rendered catalog calls `DEPLOY_PRIME_URL` or `URL` plus `/api`. The function clears `FINALPAY_URL`, `FINALPAY_SECRET`, `PAYMENTS_CALLBACK_BASE_URL`, and `OPENAI_API_KEY`, and forces AI chat, test deposit, and mock payments off. Payment intents and the AI budget stay in memory for that function. Leave `BFF_INTERNAL_URL` unset on Netlify. Platform variables stay server-side and must point at Stage (`FINAL_PLATFORM_API_URL` ending in `/api/v1`).
 
 ## AI / Cursor workflow
 
@@ -211,4 +213,5 @@ Before production, AlphaBet needs its own FinalPay tenant, player prefix, transa
 - Telegram Mini App (`flow: "mini_app"`). The website uses the login widget only.
 - CMS-managed promotions or casino catalog.
 - EveryMatrix and any legacy brand switch.
-- Production deployment and a public registration error-contract redesign.
+- A full production deployment. The Netlify demo is prepared; live payments and OpenAI stay off there.
+- A public registration error-contract redesign.

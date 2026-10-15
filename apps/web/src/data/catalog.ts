@@ -53,8 +53,29 @@ export function toCatalogQuery(filters: CatalogGameFilters): string {
   return query.toString();
 }
 
+export function resolveBffBaseUrl(env: Record<string, string | undefined> = process.env): string {
+  if (env.NETLIFY === 'true') {
+    const site = siteOrigin(env.DEPLOY_PRIME_URL) ?? siteOrigin(env.URL);
+    if (site) return `${site}/api`;
+  }
+  const configured = env.BFF_INTERNAL_URL?.trim().replace(/\/$/, '');
+  if (configured) return configured;
+  return DEFAULT_BFF_URL;
+}
+
+function siteOrigin(value: string | undefined): string | undefined {
+  if (!value?.trim()) return undefined;
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return undefined;
+    return url.origin;
+  } catch {
+    return undefined;
+  }
+}
+
 async function requestCatalog<T>(path: string, filters: CatalogGameFilters): Promise<T> {
-  const baseUrl = process.env.BFF_INTERNAL_URL ?? DEFAULT_BFF_URL;
+  const baseUrl = resolveBffBaseUrl();
   const query = toCatalogQuery(filters);
 
   try {
