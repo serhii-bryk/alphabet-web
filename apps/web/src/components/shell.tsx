@@ -237,12 +237,11 @@ function SignedInMenuLinks({
   onNavigate?: () => void;
 }) {
   const { status } = useSession();
-  const navT = useTranslations('nav');
   if (status !== 'authenticated') return null;
   return (
     <>
       <PlaySafeLink compact={compact} onNavigate={onNavigate} />
-      <Placeholder icon={UserRound} label={navT('account')} compact={compact} />
+      <AccountMenuLink compact={compact} onNavigate={onNavigate} />
     </>
   );
 }
@@ -296,23 +295,26 @@ function PlaySafeLink({
     </Link>
   );
 }
-function Placeholder({
-  icon: Icon,
-  label,
+function AccountMenuLink({
   compact = false,
+  onNavigate,
 }: {
-  icon: typeof UserRound;
-  label: string;
   compact?: boolean;
+  onNavigate?: () => void;
 }) {
-  const shellT = useTranslations('shell');
+  const path = usePathname();
+  const label = useTranslations('nav')('account');
+  const active = path === '/account';
   return (
-    <button
-      title={shellT('itemPlaceholder', { label })}
-      className="nav-item flex h-11 w-full items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-semibold"
+    <Link
+      href="/account"
+      onClick={onNavigate}
+      aria-current={active ? 'page' : undefined}
+      aria-label={compact ? label : undefined}
+      className="nav-item flex h-11 items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-semibold text-[var(--muted)]"
     >
-      <NavIcon icon={Icon} />
+      <NavIcon icon={UserRound} />
       {!compact && label}
-    </button>
+    </Link>
   );
 }

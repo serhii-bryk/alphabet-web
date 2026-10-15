@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import Image from 'next/image';
 
 const sources = {
   casino: '/banners/casino.jpg',
@@ -83,13 +82,14 @@ export function BrandBanner({
 
   return (
     <div ref={frameRef} aria-hidden className="pointer-events-none absolute inset-0" data-banner={variant}>
-      <Image
+      {/* next/image in this client module is missing from the Turbopack client manifest. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={sources[variant]}
         alt=""
-        fill
         sizes={sizes}
-        priority={priority}
-        className={`banner-photo object-cover ${position ?? focus[variant]}`}
+        fetchPriority={priority ? 'high' : 'auto'}
+        className={`banner-photo absolute inset-0 h-full w-full object-cover ${position ?? focus[variant]}`}
       />
       <div className="banner-light absolute inset-0" />
       {scrim !== 'none' && (
