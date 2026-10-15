@@ -11,7 +11,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { LifeBuoy, Minus, RotateCcw, Send } from 'lucide-react';
+import { ChevronDown, LifeBuoy, Minus, RotateCcw, Send } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import type { CatalogGame, SupportAction, SupportCatalogGame, SupportChannel, SupportChatMode, SupportFaqId, SupportSection } from '@brand/contracts';
 import type { RegistrationPrefill } from '../auth/registration-dialog';
@@ -165,6 +165,7 @@ function SupportChatPanel({
   const titleId = useId();
   const modeId = useId();
   const topicsId = useId();
+  const topicsPanelId = `${topicsId}-panel`;
   const supportTabId = `${modeId}-support`;
   const assistantTabId = `${modeId}-assistant`;
   const logId = `${modeId}-log`;
@@ -176,6 +177,7 @@ function SupportChatPanel({
   const [messages, setMessages] = useState<SupportTranscriptItem[]>([]);
   const [mode, setMode] = useState<SupportChatMode>('support');
   const [draft, setDraft] = useState('');
+  const [topicsExpanded, setTopicsExpanded] = useState(false);
   const [pending, setPending] = useState(false);
   const [handoff, setHandoff] = useState(false);
   const [channels, setChannels] = useState<SupportChannel[] | null>(null);
@@ -190,6 +192,7 @@ function SupportChatPanel({
       setMessages(stored.messages);
       setMode(stored.mode);
       setDraft(stored.draft);
+      setTopicsExpanded(stored.topicsExpanded === true);
       if (stored.open) onOpen();
     }
     setHydrated(true);
@@ -199,8 +202,8 @@ function SupportChatPanel({
 
   useEffect(() => {
     if (!hydrated) return;
-    writeSupportSession({ open, mode, draft, messages });
-  }, [draft, hydrated, messages, mode, open]);
+    writeSupportSession({ open, mode, draft, topicsExpanded, messages });
+  }, [draft, hydrated, messages, mode, open, topicsExpanded]);
 
   useEffect(() => {
     if (wasOpen.current && !open) openerRef.current?.focus();
@@ -374,6 +377,7 @@ function SupportChatPanel({
   const clear = () => {
     setMessages([]);
     setDraft('');
+    setTopicsExpanded(false);
     setHandoff(false);
     setCopied(false);
     clearSupportSession();
@@ -609,24 +613,38 @@ function SupportChatPanel({
                 {t('human')}
               </button>
             </div>
-            <div className="support-topics-block">
-              <p id={topicsId} className="support-topics-label">
-                {t('faqLabel')}
-              </p>
-              <div className="support-topics" role="group" aria-labelledby={topicsId}>
-                {faqTopics.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className="support-chip"
-                    onClick={() => void send(t(item.title), { faqId: item.id })}
-                  >
-                    {t(item.title)}
-                  </button>
-                ))}
-                <button type="button" className="support-chip" onClick={() => setHandoff(true)}>
-                  {t('suggestHuman')}
+            <div className="support-topics-block" data-expanded={topicsExpanded ? 'true' : 'false'}>
+              <div className="support-topics-head">
+                <p id={topicsId} className="support-topics-label">
+                  {t('faqLabel')}
+                </p>
+                <button
+                  type="button"
+                  className="support-text-button support-topics-toggle"
+                  aria-expanded={topicsExpanded}
+                  aria-controls={topicsPanelId}
+                  onClick={() => setTopicsExpanded((current) => !current)}
+                >
+                  {topicsExpanded ? t('topicsLess') : t('topicsMore')}
+                  <ChevronDown aria-hidden size={14} />
                 </button>
+              </div>
+              <div id={topicsPanelId} className="support-topics-clip">
+                <div className="support-topics" role="group" aria-labelledby={topicsId}>
+                  {faqTopics.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className="support-chip"
+                      onClick={() => void send(t(item.title), { faqId: item.id })}
+                    >
+                      {t(item.title)}
+                    </button>
+                  ))}
+                  <button type="button" className="support-chip" onClick={() => setHandoff(true)}>
+                    {t('suggestHuman')}
+                  </button>
+                </div>
               </div>
             </div>
             <div className="flex items-end gap-2">

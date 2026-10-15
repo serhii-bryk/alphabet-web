@@ -559,6 +559,8 @@
     "assistantPlaceholder": "اسأل مساعد الموقع",
     "assistantThinking": "المساعد يعمل",
     "faqLabel": "مواضيع مقترحة",
+    "topicsMore": "عرض الكل",
+    "topicsLess": "عرض أقل",
     "relatedLabel": "مواضيع ذات صلة",
     "actionFailed": "تعذر إكمال ذلك. جرّب الزر مرة أخرى، أو تحدث مع شخص.",
     "faqRegistration": "التسجيل وتسجيل الدخول",

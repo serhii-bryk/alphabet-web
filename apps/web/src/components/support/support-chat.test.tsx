@@ -149,6 +149,25 @@ describe('support chat ui', () => {
     expect(document.querySelector('.support-panel')?.getAttribute('data-mode')).toBe('assistant');
     expect(document.querySelector('textarea')?.value).toBe('keep this draft');
     await text('Suggested topics');
+    expect(button('Show all').getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('expands suggested topics without losing them, and restores that choice', async () => {
+    installFetch();
+    roots.push(await renderChat());
+    await click('Open support chat');
+    const collapsed = document.querySelector('.support-topics-block');
+    expect(collapsed?.getAttribute('data-expanded')).toBe('false');
+    expect(button('Where is Live Casino?')).toBeTruthy();
+    await click('Show all');
+    expect(button('Show less').getAttribute('aria-expanded')).toBe('true');
+    expect(document.querySelector('.support-topics-block')?.getAttribute('data-expanded')).toBe('true');
+    expect(sessionStorage.getItem('alphabet.supportChat.v1')).toContain('"topicsExpanded":true');
+    roots.pop()?.unmount();
+    roots.push(await renderChat());
+    expect(button('Show less').getAttribute('aria-expanded')).toBe('true');
+    await click('Show less');
+    expect(button('Show all').getAttribute('aria-expanded')).toBe('false');
   });
 
   it('switches to the site assistant and runs its action', async () => {

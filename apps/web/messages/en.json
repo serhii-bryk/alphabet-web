@@ -559,6 +559,8 @@
     "assistantPlaceholder": "Ask the site assistant",
     "assistantThinking": "The assistant is working",
     "faqLabel": "Suggested topics",
+    "topicsMore": "Show all",
+    "topicsLess": "Show less",
     "relatedLabel": "Related topics",
     "actionFailed": "That could not be completed. Try the button again, or talk to a person.",
     "faqRegistration": "Registration and login",

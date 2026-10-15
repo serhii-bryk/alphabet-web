@@ -20,6 +20,7 @@ export interface SupportTranscript {
   open: boolean;
   mode: SupportChatMode;
   draft: string;
+  topicsExpanded?: boolean;
   messages: SupportTranscriptItem[];
 }
 
@@ -51,7 +52,13 @@ export function writeSupportSession(value: SupportTranscript) {
     }));
     sessionStorage.setItem(
       storageKey,
-      JSON.stringify({ open: value.open, mode: value.mode, draft: redactSensitive(value.draft).slice(0, 500), messages }),
+      JSON.stringify({
+        open: value.open,
+        mode: value.mode,
+        draft: redactSensitive(value.draft).slice(0, 500),
+        topicsExpanded: value.topicsExpanded === true,
+        messages,
+      }),
     );
   } catch {
     // The conversation still lives in memory for this page.
@@ -114,6 +121,7 @@ function parseTranscript(value: unknown): SupportTranscript | null {
     open: value.open,
     mode: value.mode === 'assistant' ? 'assistant' : 'support',
     draft: typeof value.draft === 'string' ? redactSensitive(value.draft).slice(0, 500) : '',
+    topicsExpanded: value.topicsExpanded === true,
     messages,
   };
 }

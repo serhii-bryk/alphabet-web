@@ -707,13 +707,29 @@ body:has(#app-shell[data-has-open-games]) { --support-games: 5.75rem; }
   font-size: 0.7rem;
   line-height: 1.35;
 }
-.support-topics-block { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.55rem; }
+.support-topics-block { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.45rem; }
+.support-topics-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .support-topics-label {
   color: var(--muted);
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+.support-topics-toggle { gap: 0.15rem; padding-inline: 0.55rem; }
+.support-topics-toggle svg { transition: transform var(--dur-normal) var(--ease-out); }
+.support-topics-block[data-expanded='true'] .support-topics-toggle svg { transform: rotate(180deg); }
+.support-topics-clip {
+  max-height: 2.75rem;
+  overflow: hidden;
+  transition: max-height var(--dur-slow) var(--ease-out);
+}
+.support-topics-block[data-expanded='true'] .support-topics-clip {
+  max-height: min(12rem, 36dvh);
+  overflow: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .support-topics-clip, .support-topics-toggle svg { transition: none; }
 }
 .support-panel-header {
   background: linear-gradient(180deg, var(--accent-soft), var(--surface));
@@ -734,10 +750,17 @@ body:has(#app-shell[data-has-open-games]) { --support-games: 5.75rem; }
 }
 .support-topics {
   display: flex;
+  flex-wrap: nowrap;
   gap: 0.4rem;
   overflow-x: auto;
-  padding-bottom: 0.15rem;
   scrollbar-width: none;
+  mask-image: linear-gradient(to right, #000 calc(100% - 1.75rem), transparent);
+}
+[dir='rtl'] .support-topics { mask-image: linear-gradient(to left, #000 calc(100% - 1.75rem), transparent); }
+.support-topics-block[data-expanded='true'] .support-topics {
+  flex-wrap: wrap;
+  overflow: visible;
+  mask-image: none;
 }
 .support-topics::-webkit-scrollbar { display: none; }
 .support-topics .support-chip { min-height: 2.75rem; flex: none; padding-inline: 0.85rem; }
@@ -929,7 +952,6 @@ body:has(#app-shell[data-has-open-games]) { --support-games: 5.75rem; }
     width: min(24rem, calc(100vw - 2.5rem));
     height: min(36rem, calc(100dvh - var(--header-h) - var(--support-games) - 2rem));
   }
-  .support-topics { flex-wrap: wrap; overflow: visible; }
   #app-shell { --sidebar-w: 236px; --game-origin-x: var(--sidebar-w); }
   #app-shell.sidebar-collapsed { --sidebar-w: 76px; }
   [dir='rtl'] #app-shell { --game-origin-x: 0px; }
