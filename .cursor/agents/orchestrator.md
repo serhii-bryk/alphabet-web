@@ -13,6 +13,18 @@ Coordinate every feature from requirement through independent verification, usin
 6. Never accept a developer's completion claim without independent evidence.
 7. After that verification passes, prepare the Git handoff in `.cursor/rules/git-handoff.mdc` and wait for approval of the specific action. Do not add agents or review stages for the handoff.
 
+## Execution feedback
+
+After the checks the task already requires, add a few lines to the final report. This is not another agent, review cycle, or log.
+
+- Use the evidence already produced: failed commands, test results, retries, tool errors, and significant corrections.
+- Name concrete issues that affected reliability, speed, or correctness. Fix a blocking problem when it is still inside the task scope.
+- Suggest a workflow improvement only when that evidence supports it, especially when the same issue recurs. Do not invent one to fill the report, and do not rewrite these instructions after every task.
+- Skip a full execution-log review for a trivial task.
+- Never include secrets, credentials, or sensitive user data.
+
+A complex or high-risk milestone may use deeper tracing and the existing independent review when that extra depth is justified. Do not add an observability service, logging framework, or extra orchestration.
+
 ## Fix loop
 
 For a failing targeted test: the responsible developer inspects the failure, applies the smallest fix, and reruns only the affected test. Do not restart the agent workflow. For a final-verification Blocker: fix it, rerun the affected checks, and only rerun reviews whose findings are affected.
@@ -36,4 +48,4 @@ Never invent Platform behavior, bypass failures, hide limitations, change unrela
 - Final test, technical, and applicable UX reviews have no Blocker.
 - Architecture boundaries remain intact and limitations are documented.
 
-Final reports include implemented scope, agents used, checks run, review results, known limitations, unresolved human decisions, and the Git handoff proposal or the branch and short SHA after a successful commit.
+Final reports include implemented scope, agents used, checks run, review results, known limitations, a few lines of execution feedback, unresolved human decisions, and the Git handoff proposal or the branch and short SHA after a successful commit.

@@ -4,7 +4,7 @@ Source of truth for the current product. Read this before reconstructing history
 
 Update this file at the end of every completed milestone, and whenever an important architecture or integration decision changes. Record names and decisions only. Never store secrets, passwords, API keys, tokens, HMAC material, or personal test-account credentials.
 
-Last updated: 2026-10-14 (Chat launcher, balance, and safe field fill).
+Last updated: 2026-10-15 (Chat, search, payments, Telegram, and execution feedback).
 
 ## Product goal
 
@@ -33,6 +33,7 @@ Fast Development Mode, coordinated by `.cursor/agents/orchestrator.md`.
 - During implementation: targeted tests only. No full suite and no reviewers after every edit.
 - When a milestone is implementation-complete: typecheck, lint, relevant Vitest, Playwright where the UI changed, then independent test review and code review. UX review only if the user-visible UI changed materially.
 - After that verification, the orchestrator prepares the Git handoff in `.cursor/rules/git-handoff.mdc` and waits for approval. It does not commit on `main`, `master`, or `develop`, and does not push, unless explicitly authorized.
+- After those checks, the final report adds a few lines of execution feedback from evidence already produced: failed commands, test results, retries, tool errors, and significant corrections. Fix an in-scope blocker. Suggest a workflow change only when that evidence supports it, especially if it recurs. Do not rewrite these instructions after every task, skip a full log review for a trivial task, and never include secrets or sensitive data. A complex or high-risk milestone may use deeper tracing and the existing independent review when justified.
 - Stop for human approval before architecture, Platform contracts, auth/security, database schema, payments, major dependencies, deployment, or product tradeoffs.
 - CI mocks Platform and never calls stage.
 

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Git handoff
 
-The orchestrating agent prepares this handoff. Other agents do not create branches, stage, or commit. Fast Development Mode is unchanged: no extra agents or review stages.
+The orchestrating agent prepares this handoff. Other agents do not create branches, stage, or commit. Fast Development Mode is unchanged: no extra agents or review stages. A few lines of execution feedback in the final report are not a new stage.
 
 ## Before implementation
 
