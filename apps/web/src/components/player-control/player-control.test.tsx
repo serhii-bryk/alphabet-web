@@ -22,7 +22,7 @@ import messages from '../../../messages/en.json';
 import { AuthProvider } from '../auth/auth-provider';
 import { applyAuthenticatedSession, sessionKey, useEndSession } from '../auth/session';
 import { PlayerControlCenter } from './player-control-center';
-import { RealityCheckReminder, SessionClockLink, resetReminderLeader } from './session-clock';
+import { RealityCheckReminder, SessionClockLink, realityCheckKey, resetReminderLeader } from './session-clock';
 import {
   PLAYER_CONTROL_KEY,
   RECEIPT_KEY,
@@ -178,11 +178,19 @@ async function click(selector: string) {
   });
 }
 
+async function clickButton(label: string) {
+  const button = [...document.querySelectorAll('button')].find((item) => item.textContent === label);
+  if (!(button instanceof HTMLButtonElement)) throw new Error(`missing button ${label}`);
+  await act(async () => {
+    button.click();
+  });
+}
+
 describe('session clock', () => {
   it('does not reset when the component remounts with a platform startedAt', async () => {
     let now = Date.parse('2026-10-15T12:00:00.000Z');
     vi.spyOn(Date, 'now').mockImplementation(() => now);
-    installFetch({ interval: 0 });
+    installFetch({ interval: 60 });
     const client = queryClient();
 
     await render(<SessionClockLink placement="header" />, client);
@@ -257,7 +265,7 @@ describe('session clock', () => {
     let now = Date.parse('2026-10-15T12:00:00.000Z');
     vi.spyOn(Date, 'now').mockImplementation(() => now);
     installFetch({
-      interval: 0,
+      interval: 15,
       clock: { startedAt: null, source: 'unavailable' },
     });
     const client = queryClient();
@@ -287,6 +295,39 @@ describe('session clock', () => {
       now,
     });
     expect(resolved).toEqual({ startedAtMs: start, kind: 'platform', deviceStartedAtToStore: null });
+  });
+
+  it('hides the timer when reality check is off and follows sign-in, sign-out, and a saved interval', async () => {
+    vi.spyOn(Date, 'now').mockImplementation(() => Date.parse('2026-10-15T12:00:00.000Z'));
+    const options = { guest: true, interval: 0 };
+    installFetch(options);
+    const client = await render(<SessionClockLink placement="header" />);
+    await waitFor(() => client.getQueryState(sessionKey)?.status === 'success');
+    await settle();
+    expect(document.querySelector('[data-testid="session-clock"]')).toBeNull();
+
+    options.guest = false;
+    options.interval = 30;
+    await act(async () => {
+      client.setQueryData(sessionKey, player);
+    });
+    await waitFor(() => document.querySelector('[data-testid="session-clock"]')?.textContent?.includes('1:00:00') === true);
+
+    await act(async () => {
+      client.setQueryData(realityCheckKey('42'), { intervalMinutes: 0 });
+    });
+    await waitFor(() => document.querySelector('[data-testid="session-clock"]') === null);
+    expect(document.querySelector('.skeleton')).toBeNull();
+
+    await act(async () => {
+      client.setQueryData(realityCheckKey('42'), { intervalMinutes: 30 });
+    });
+    await waitFor(() => document.querySelector('[data-testid="session-clock"]')?.textContent?.includes('1:00:00') === true);
+
+    await act(async () => {
+      client.setQueryData(sessionKey, { authenticated: false });
+    });
+    await waitFor(() => document.querySelector('[data-testid="session-clock"]') === null);
   });
 });
 
@@ -385,6 +426,7 @@ describe('player control center', () => {
     const { calls } = installFetch({ interval: 0 });
     await render(<PlayerControlCenter />);
     await waitFor(() => document.querySelector('[data-testid="cool-off-2"]') !== null);
+    expect(document.querySelector('[data-testid="session-clock-hero"]')).toBeNull();
 
     const custom = document.querySelector('[data-testid="cool-off-2"]');
     expect(custom).toBeInstanceOf(HTMLInputElement);
@@ -446,6 +488,31 @@ describe('player control center', () => {
     expect(client.getQueryData(sessionKey)).toEqual({ authenticated: false });
     const post = calls.find((call) => call.url.includes('/self-exclusion'));
     expect(JSON.parse(String(post?.init?.body))).toEqual({ periodId: 9 });
+  });
+
+  it('shows the session timer after a reminder is saved and hides it when reminders are turned off', async () => {
+    vi.spyOn(Date, 'now').mockImplementation(() => Date.parse('2026-10-15T12:00:00.000Z'));
+    installFetch({ interval: 0 });
+    await render(
+      <>
+        <SessionClockLink placement="bar" />
+        <PlayerControlCenter />
+      </>,
+    );
+    await waitFor(() => document.querySelector('[data-testid="reality-interval-0"]') !== null);
+    await settle();
+    expect(document.querySelector('[data-testid="session-clock"]')).toBeNull();
+    expect(document.querySelector('[data-testid="session-clock-hero"]')).toBeNull();
+
+    await click('[data-testid="reality-interval-30"]');
+    await clickButton('Save reminder');
+    await waitFor(() => document.querySelector('[data-testid="session-clock"]')?.textContent?.includes('1:00:00') === true);
+    expect(document.querySelector('[data-testid="session-clock-hero"]')?.textContent).toContain('1:00:00');
+
+    await click('[data-testid="reality-interval-0"]');
+    await clickButton('Save reminder');
+    await waitFor(() => document.querySelector('[data-testid="session-clock"]') === null);
+    expect(document.querySelector('[data-testid="session-clock-hero"]')).toBeNull();
   });
 
   it('shows an empty catalog and an error that can be retried', async () => {

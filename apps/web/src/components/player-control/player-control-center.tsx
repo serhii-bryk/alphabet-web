@@ -17,7 +17,7 @@ import { useEndSession, useSession } from '../auth/session';
 import { AlphaBetLoader } from '../alphabet-loader';
 import { Badge, Button, Skeleton } from '../ui';
 import { ControlDialog } from './control-dialog';
-import { realityCheckKey, usePlayerControlClock } from './session-clock';
+import { realityCheckKey, sessionTimerVisible, usePlayerControlClock } from './session-clock';
 import {
   canSubmitPeriod,
   formatElapsed,
@@ -278,6 +278,7 @@ export function PlayerControlCenter() {
   const exclusionPeriod = catalog?.selfExclusionPeriods.find((period) => period.id === exclusionPeriodId) ?? null;
   const reason = catalog?.coolOffReasons.find((item) => item.id === reasonId) ?? null;
   const authenticated = status === 'authenticated';
+  const showSessionTimer = authenticated && sessionTimerVisible(clock.intervalMinutes);
 
   const requireAuth = (opener: HTMLElement | null) => {
     if (authenticated) return false;
@@ -350,7 +351,7 @@ export function PlayerControlCenter() {
                 title={t('realityTitle')}
                 body={t('realityBody')}
               />
-              {authenticated && clock.resolved && (
+              {showSessionTimer && clock.resolved && (
                 <div className="mt-5" data-testid="session-clock-hero" data-clock-kind={clock.resolved.kind}>
                   <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--muted)]">{t('sessionClock')}</p>
                   <p className="mt-1 text-5xl font-black tabular-nums tracking-tight sm:text-6xl">
@@ -361,10 +362,10 @@ export function PlayerControlCenter() {
                   </p>
                 </div>
               )}
-              {authenticated && !clock.resolved && clock.sessionQuery.isPending && (
+              {showSessionTimer && !clock.resolved && clock.sessionQuery.isPending && (
                 <Skeleton className="mt-5 h-24 motion-reduce:animate-none" />
               )}
-              {authenticated && clock.sessionQuery.isError && (
+              {showSessionTimer && clock.sessionQuery.isError && (
                 <div className="mt-5 flex flex-col items-start gap-2">
                   <p className="text-sm text-[var(--muted)]">{t('clockUnavailable')}</p>
                   <Button type="button" variant="secondary" onClick={() => void clock.sessionQuery.refetch()}>

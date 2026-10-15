@@ -27,6 +27,11 @@ import {
 export const realityCheckKey = (playerId: string) => ['responsible-gaming', 'reality-check', playerId] as const;
 export const sessionClockKey = (playerId: string) => ['responsible-gaming', 'session', playerId] as const;
 
+/** The session timer is visible only for a saved interval above 0. */
+export function sessionTimerVisible(intervalMinutes: number | null) {
+  return intervalMinutes !== null && intervalMinutes > 0;
+}
+
 function useNow(active: boolean) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -104,7 +109,7 @@ function clockLabel(
 export function SessionClockLink({ placement }: { placement: 'header' | 'bar' }) {
   const t = useTranslations('playerControl');
   const clock = usePlayerControlClock();
-  if (clock.status !== 'authenticated') return null;
+  if (clock.status !== 'authenticated' || !sessionTimerVisible(clock.intervalMinutes)) return null;
 
   if (!clock.resolved) {
     if (clock.sessionQuery.isError) {

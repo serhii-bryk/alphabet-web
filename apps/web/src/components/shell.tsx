@@ -93,7 +93,6 @@ export function Shell({ children }: { children: ReactNode }) {
   const [drawer, setDrawer] = useState(false),
     [collapsed, setCollapsed] = useState(false);
   const path = usePathname();
-  const navT = useTranslations('nav');
   const shellT = useTranslations('shell');
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -168,8 +167,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <ThemeSwitcher compact={collapsed} />
             </div>
             <div className="space-y-1">
-              <PlaySafeLink compact={collapsed} />
-              <Placeholder icon={UserRound} label={navT('account')} compact={collapsed} />
+              <SignedInMenuLinks compact={collapsed} />
               <DepositButton compact={collapsed} />
               <SupportMenuButton compact={collapsed} />
             </div>
@@ -181,8 +179,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <DrawerAuth onNavigate={() => setDrawer(false)} />
             <LocaleSwitcher showLabel />
             <ThemeSwitcher />
-            <PlaySafeLink onNavigate={() => setDrawer(false)} />
-            <Placeholder icon={UserRound} label={navT('account')} />
+            <SignedInMenuLinks onNavigate={() => setDrawer(false)} />
             <DepositButton onNavigate={() => setDrawer(false)} />
             <SupportMenuButton onNavigate={() => setDrawer(false)} />
           </div>
@@ -198,23 +195,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <div className="route-content">{children}</div>
           <SiteFooter />
         </main>
-        <nav
-          aria-label={navT('mobile')}
-          className="mobile-only fixed inset-x-0 bottom-0 z-40 grid h-[var(--bottom-h)] grid-cols-5 border-t border-[var(--line)] bg-[var(--surface)] px-1"
-        >
-          {mobileNav.map(({ href, labelKey, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              aria-current={path === href ? 'page' : undefined}
-              className="bottom-nav-item flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold"
-              style={{ color: path === href ? 'var(--accent)' : 'var(--muted)' }}
-            >
-              <NavIcon icon={Icon} />
-              <span className="truncate">{navT(labelKey)}</span>
-            </Link>
-          ))}
-        </nav>
+        <MobileNav />
         <SectionScroll />
         <CommandSearch />
         <ConnectionStatus />
@@ -246,6 +227,49 @@ function SessionGameLaunch({ children }: { children: ReactNode }) {
     >
       {children}
     </GameLaunchProvider>
+  );
+}
+function SignedInMenuLinks({
+  compact = false,
+  onNavigate,
+}: {
+  compact?: boolean;
+  onNavigate?: () => void;
+}) {
+  const { status } = useSession();
+  const navT = useTranslations('nav');
+  if (status !== 'authenticated') return null;
+  return (
+    <>
+      <PlaySafeLink compact={compact} onNavigate={onNavigate} />
+      <Placeholder icon={UserRound} label={navT('account')} compact={compact} />
+    </>
+  );
+}
+function MobileNav() {
+  const path = usePathname();
+  const navT = useTranslations('nav');
+  const { status } = useSession();
+  const items = mobileNav.filter((item) => status === 'authenticated' || item.href !== '/account');
+  return (
+    <nav
+      aria-label={navT('mobile')}
+      className="mobile-only fixed inset-x-0 bottom-0 z-40 grid h-[var(--bottom-h)] border-t border-[var(--line)] bg-[var(--surface)] px-1"
+      style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+    >
+      {items.map(({ href, labelKey, icon: Icon }) => (
+        <Link
+          key={href}
+          href={href}
+          aria-current={path === href ? 'page' : undefined}
+          className="bottom-nav-item flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold"
+          style={{ color: path === href ? 'var(--accent)' : 'var(--muted)' }}
+        >
+          <NavIcon icon={Icon} />
+          <span className="truncate">{navT(labelKey)}</span>
+        </Link>
+      ))}
+    </nav>
   );
 }
 function PlaySafeLink({
