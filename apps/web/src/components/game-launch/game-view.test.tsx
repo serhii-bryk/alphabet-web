@@ -225,6 +225,19 @@ describe('GameView', () => {
     expect(html).not.toContain('Retry');
   });
 
+  it('renders the account_restricted error without retry or a live frame', () => {
+    const html = renderView({
+      status: 'error',
+      target: { game, mode: 'real' },
+      attempt: 1,
+      code: 'account_restricted',
+    });
+
+    expect(html).toContain('This account is cooled off or self-excluded. Real-money play is closed.');
+    expect(html).not.toContain('Retry');
+    expect(html).not.toContain('<iframe');
+  });
+
   it('renders the game_unavailable error without retry', () => {
     const html = renderView({
       status: 'error',

@@ -61,6 +61,13 @@ function platform(overrides: Partial<PlatformClient> = {}): PlatformClient {
     removeFavorite: vi.fn(),
     lastPlayed: vi.fn(),
     mostPlayed: vi.fn(),
+    getRealityCheckSettings: vi.fn(),
+    getPlayerRealityCheck: vi.fn(),
+    setPlayerRealityCheck: vi.fn(),
+    getCoolOffSettings: vi.fn(),
+    getSelfExclusionSettings: vi.fn(),
+    excludePlayer: vi.fn(),
+    getPlayerLogins: vi.fn(),
     ...overrides,
   };
 }

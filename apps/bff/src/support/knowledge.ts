@@ -158,8 +158,11 @@ const articles: KnowledgeArticle[] = [
       'لعب مسؤول',
       'استبعاد',
       'حد',
+      'reality check',
+      'reality-check',
+      'reminder',
     ],
-    body: 'AlphaBet is for adults 18 or older. Deposit limits, time-outs, and self-exclusion are not available in the product yet. The responsible gaming page says to stop playing when it stops being entertainment and to contact support if the account needs to be closed. For a request to self-exclude, cool off, restrict gambling, or set limits, direct the player to that page and to human support. Do not suggest depositing, another game, or continued play.',
+    body: 'AlphaBet is for adults 18 or older. A signed-in player can set a reality-check reminder, start a cool-off, or self-exclude on the responsible gaming page. Reality check is an interval in minutes, and zero turns reminders off. The player can acknowledge a reminder in the browser. That acknowledgement is stored only on the device and is not saved by Platform. Cool-off and self-exclusion use only the periods listed on that page. A period that asks for a custom end date cannot be submitted. Cool-off may include one listed reason, and that reason is optional. Self-exclusion has no reason. Support may explain these choices and must not change, cancel, or submit them. An exclusion cannot be cancelled in the product. Deposit limits are not available. Stop playing when it stops being entertainment. Do not suggest depositing, another game, or continued play. If the player wants a person to help, direct them to human support.',
   },
   {
     id: 'human',

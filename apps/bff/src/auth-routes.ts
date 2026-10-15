@@ -21,11 +21,11 @@ import {
 const authMessages = {
   invalid_credentials: 'The email or password is incorrect',
   invalid_login: 'Enter a valid email and password',
+  account_restricted: 'This account is restricted',
   auth_unavailable: 'Sign-in is unavailable',
   session_ended: 'Your session has ended',
   external_auth_rejected: 'Telegram sign-in was not accepted',
   external_auth_unavailable: 'Telegram sign-in is unavailable',
-  account_restricted: 'This account cannot sign in right now',
 } as const satisfies Record<AuthErrorCode, string>;
 
 const telegramAuthMaxAgeMs = 86_400_000;
@@ -73,6 +73,7 @@ const authErrorSchema = z.object({
     code: z.enum([
       'invalid_credentials',
       'invalid_login',
+      'account_restricted',
       'auth_unavailable',
       'session_ended',
       'external_auth_rejected',
@@ -370,9 +371,12 @@ function shareRefresh(
   return promise;
 }
 
-function loginFailureCode(error: unknown): 'invalid_credentials' | 'invalid_login' | 'auth_unavailable' {
+function loginFailureCode(
+  error: unknown,
+): 'invalid_credentials' | 'invalid_login' | 'auth_unavailable' | 'account_restricted' {
   if (error instanceof AuthError && error.code === 'invalid_credentials') return 'invalid_credentials';
   if (error instanceof AuthError && error.code === 'invalid_login') return 'invalid_login';
+  if (error instanceof AuthError && error.code === 'account_restricted') return 'account_restricted';
   return 'auth_unavailable';
 }
 

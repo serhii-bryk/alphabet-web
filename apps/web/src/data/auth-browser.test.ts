@@ -125,6 +125,14 @@ describe('login', () => {
     expect((error as AuthRequestError).code).toBe('auth_unavailable');
   });
 
+  it('maps account_restricted from the error code', async () => {
+    stubFetch(async () =>
+      Response.json({ error: { code: 'account_restricted', message: 'restricted' } }, { status: 403 }),
+    );
+    const error = await caught(login({ email: 'player@example.com', password }));
+    expect((error as AuthRequestError).code).toBe('account_restricted');
+  });
+
   it('maps a network failure without exposing the password', async () => {
     stubFetch(async () => {
       throw new TypeError('Failed to fetch');

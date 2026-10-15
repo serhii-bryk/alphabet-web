@@ -1,7 +1,8 @@
 'use client';
 import type { ReactNode } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, ShieldCheck } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import { Button, Skeleton } from '../ui';
 import { useCashier } from '../cashier/cashier-provider';
 import { useAuthDialog } from './auth-provider';
@@ -144,6 +145,16 @@ export function AccountSection() {
     <div className="grid gap-4">
       <BalancePanel />
       <ProfilePanel />
+      <Link
+        href="/responsible-gaming"
+        className="surface flex items-center gap-3 rounded-[var(--radius-lg)] p-5 text-start"
+      >
+        <ShieldCheck aria-hidden size={20} className="shrink-0 text-[var(--accent)]" />
+        <span>
+          <span className="block font-bold">{t('playerControl')}</span>
+          <span className="mt-1 block text-sm text-[var(--muted)]">{t('playerControlHint')}</span>
+        </span>
+      </Link>
     </div>
   );
 }

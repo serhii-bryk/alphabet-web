@@ -102,6 +102,7 @@ export function GameLaunchProvider({
   const historyEntryRef = useRef<number | null>(null);
   const pendingBackRef = useRef<number | null>(null);
   const authenticatedRef = useRef(authenticated);
+  const preserveRestrictedRef = useRef(new Set<string>());
   const pathname = usePathname();
   const router = useRouter();
 
@@ -133,8 +134,9 @@ export function GameLaunchProvider({
         (error: unknown) => {
           if (controller.signal.aborted) return;
           const code = error instanceof GameLaunchError ? error.code : 'launch_unavailable';
-          if (code === 'auth_required') sessionEndedRef.current();
+          if (code === 'account_restricted') preserveRestrictedRef.current.add(id);
           dispatch({ type: 'panel', id, action: { type: 'failed', attempt, code } });
+          if (code === 'auth_required' || code === 'account_restricted') sessionEndedRef.current();
         },
       );
       return attempt;
@@ -322,11 +324,21 @@ export function GameLaunchProvider({
     const wasAuthenticated = authenticatedRef.current;
     authenticatedRef.current = authenticated;
     if (!wasAuthenticated || authenticated) return;
+    const preserved = preserveRestrictedRef.current;
+    const keepRestricted = preserved.size > 0;
     const realIds = [...modesRef.current.entries()]
-      .filter(([, mode]) => mode === 'real')
-      .map(([id]) => id);
-    for (const id of realIds) forget(id);
-    if (realIds.length > 0) dispatch({ type: 'dropMode', mode: 'real' });
+      .filter(([panelId, mode]) => mode === 'real' && !preserved.has(panelId))
+      .map(([panelId]) => panelId);
+    preserved.clear();
+    if (!keepRestricted) {
+      for (const panelId of realIds) forget(panelId);
+      if (realIds.length > 0) dispatch({ type: 'dropMode', mode: 'real' });
+    } else {
+      for (const panelId of realIds) {
+        forget(panelId);
+        dispatch({ type: 'close', id: panelId });
+      }
+    }
     finishIfEmpty();
   }, [authenticated, finishIfEmpty, forget]);
 

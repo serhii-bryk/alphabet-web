@@ -151,6 +151,13 @@ describe('requestRealLaunch', () => {
     await expectLaunchError(requestRealLaunch('406'), code);
   });
 
+  it('maps account_restricted separately from game_unavailable', async () => {
+    stubFetch(async () =>
+      Response.json({ error: { code: 'account_restricted', message: 'restricted' } }, { status: 403 }),
+    );
+    await expectLaunchError(requestRealLaunch('406'), 'account_restricted');
+  });
+
   it('treats any 401 as auth_required even without a matching body', async () => {
     stubFetch(async () => new Response('', { status: 401 }));
     await expectLaunchError(requestRealLaunch('406'), 'auth_required');

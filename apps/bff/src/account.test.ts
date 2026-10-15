@@ -252,4 +252,28 @@ describe('real game launch', () => {
     });
     expect(response.headers.get('set-cookie')).toBeNull();
   });
+
+  it('clears the cookie when real launch reports a restricted account', async () => {
+    const { app } = makeApp(async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith('/login')) return Response.json(loginResponse);
+      if (path.endsWith('/profile')) return Response.json(profileResponse);
+      return Response.json(
+        { message: 'hidden upstream', error: 'player_has_excluded' },
+        { status: 403 },
+      );
+    });
+    const cookie = await login(app);
+    const response = await app.request('/api/games/406/launch/real', {
+      method: 'POST',
+      headers: { cookie },
+    });
+    const text = await response.text();
+    expect(response.status).toBe(403);
+    expect(JSON.parse(text)).toEqual({
+      error: { code: 'account_restricted', message: 'This account is restricted' },
+    });
+    expect(text).not.toContain('hidden upstream');
+    expect(response.headers.get('set-cookie')).toContain('Max-Age=0');
+  });
 });

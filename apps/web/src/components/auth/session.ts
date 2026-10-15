@@ -12,10 +12,17 @@ import {
   logout,
   type LoginInput,
 } from '@/data/auth-browser';
+import { clearDeviceClock, clearPlayerControlReceipt } from '../player-control/storage';
 
 export const sessionKey = ['session'] as const;
 export const accountKey = ['account'] as const;
 export const playerKey = ['player'] as const;
+const responsibleGamingKey = ['responsible-gaming'] as const;
+
+function releasePlayerClock(client: QueryClient, playerId: string | null) {
+  if (playerId) clearDeviceClock(playerId);
+  client.removeQueries({ queryKey: responsibleGamingKey });
+}
 export const profileKey = ['account', 'profile'] as const;
 export const balanceKey = ['account', 'balance'] as const;
 
@@ -56,6 +63,8 @@ export function useEndSession() {
   const client = useQueryClient();
   return useCallback(() => {
     // A session fetch started before sign-out must not restore the old session.
+    const current = client.getQueryData<SessionResponse>(sessionKey);
+    releasePlayerClock(client, current?.authenticated ? current.playerId : null);
     void client.cancelQueries({ queryKey: sessionKey }, { revert: false, silent: true });
     client.setQueryData<SessionResponse>(sessionKey, guestSession);
     client.removeQueries({ queryKey: accountKey });
@@ -92,6 +101,8 @@ export function useBalance() {
 }
 
 export function applyAuthenticatedSession(client: QueryClient, session: AuthSession) {
+  clearPlayerControlReceipt();
+  releasePlayerClock(client, session.playerId);
   client.removeQueries({ queryKey: playerKey });
   client.setQueryData<SessionResponse>(sessionKey, session);
   void client.invalidateQueries({ queryKey: accountKey });

@@ -7,6 +7,7 @@ import {
   Menu,
   Radio,
   Search,
+  ShieldCheck,
   TicketPercent,
   Trophy,
   UserRound,
@@ -31,6 +32,7 @@ import { CashierProvider, DepositButton } from './cashier/cashier-provider';
 import { DrawerAuth, HeaderAuth, MobileHeaderAuth } from './auth/header-auth';
 import { useEndSession, useSession } from './auth/session';
 import { ProductNav } from './product-nav';
+import { RealityCheckReminder, SessionClockLink } from './player-control/session-clock';
 import { SiteFooter } from './site-footer';
 import { RouteProgress } from './route-progress';
 
@@ -128,6 +130,9 @@ export function Shell({ children }: { children: ReactNode }) {
             <div className="mobile-only">
               <SearchTrigger iconOnly />
             </div>
+            <div className="desktop-only">
+              <SessionClockLink placement="header" />
+            </div>
             <div className="desktop-only min-w-0 gap-2">
               <HeaderAuth />
             </div>
@@ -163,6 +168,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <ThemeSwitcher compact={collapsed} />
             </div>
             <div className="space-y-1">
+              <PlaySafeLink compact={collapsed} />
               <Placeholder icon={UserRound} label={navT('account')} compact={collapsed} />
               <DepositButton compact={collapsed} />
               <SupportMenuButton compact={collapsed} />
@@ -175,6 +181,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <DrawerAuth onNavigate={() => setDrawer(false)} />
             <LocaleSwitcher showLabel />
             <ThemeSwitcher />
+            <PlaySafeLink onNavigate={() => setDrawer(false)} />
             <Placeholder icon={UserRound} label={navT('account')} />
             <DepositButton onNavigate={() => setDrawer(false)} />
             <SupportMenuButton onNavigate={() => setDrawer(false)} />
@@ -184,6 +191,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <div
             className={`mobile-only sticky top-[var(--header-h)] z-30 border-b border-[var(--line)] bg-[var(--bg)]/95 px-3 py-2 backdrop-blur-sm ${sports ? 'mb-0' : '-mx-4 mb-4'}`}
           >
+            <SessionClockLink placement="bar" />
             <ProductNav />
           </div>
           <div id="game-page-slot" />
@@ -210,6 +218,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <SectionScroll />
         <CommandSearch />
         <ConnectionStatus />
+        <RealityCheckReminder />
       </div>
       </SupportChatProvider>
       </SessionGameLaunch>
@@ -237,6 +246,30 @@ function SessionGameLaunch({ children }: { children: ReactNode }) {
     >
       {children}
     </GameLaunchProvider>
+  );
+}
+function PlaySafeLink({
+  compact = false,
+  onNavigate,
+}: {
+  compact?: boolean;
+  onNavigate?: () => void;
+}) {
+  const path = usePathname();
+  const t = useTranslations('nav');
+  const label = t('playSafe');
+  const active = path === '/responsible-gaming';
+  return (
+    <Link
+      href="/responsible-gaming"
+      onClick={onNavigate}
+      aria-current={active ? 'page' : undefined}
+      aria-label={compact ? label : undefined}
+      className="nav-item flex h-11 items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-semibold text-[var(--muted)]"
+    >
+      <ShieldCheck size={19} />
+      {!compact && label}
+    </Link>
   );
 }
 function Placeholder({

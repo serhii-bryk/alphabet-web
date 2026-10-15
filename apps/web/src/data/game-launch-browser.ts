@@ -73,6 +73,9 @@ async function requestLaunch(
 
   // Any 401 means the session is gone, whatever the body says.
   if (mode === 'real' && response.status === 401) throw new GameLaunchError('auth_required');
+  if (mode === 'real' && hasErrorCode(body, 'account_restricted')) {
+    throw new GameLaunchError('account_restricted');
+  }
   const expected = errorCodeByStatus[mode][response.status];
   throw new GameLaunchError(
     expected && hasErrorCode(body, expected) ? expected : 'launch_unavailable',

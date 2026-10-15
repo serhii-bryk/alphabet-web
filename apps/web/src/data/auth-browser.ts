@@ -168,6 +168,7 @@ export async function login(input: LoginInput): Promise<AuthSession> {
     if (session) return session;
     throw new AuthRequestError('auth_unavailable');
   }
+  if (hasErrorCode(body, 'account_restricted')) throw new AuthRequestError('account_restricted');
   const expected = loginErrorByStatus[response.status];
   throw new AuthRequestError(
     expected && hasErrorCode(body, expected) ? expected : 'auth_unavailable',

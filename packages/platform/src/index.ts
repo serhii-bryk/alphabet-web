@@ -118,6 +118,54 @@ export const platformFavoriteRemovedSchema = z.object({
 export const platformLastPlayedPageSchema = platformPageSchema(platformLastPlayedGameSchema);
 export const platformMostPlayedPageSchema = platformPageSchema(platformMostPlayedGameSchema);
 
+const finiteNumberSchema = z.number().refine((value) => Number.isFinite(value));
+
+const platformRealityCheckSettingsSchema = z.object({
+  values: z.array(finiteNumberSchema),
+});
+
+const platformRealityCheckSchema = z.object({
+  value: finiteNumberSchema,
+});
+
+const platformResponsiblePeriodSchema = z.object({
+  id: z.number().int(),
+  text: z.string(),
+  date_selector: z.boolean(),
+});
+
+const platformResponsibleReasonSchema = z.object({
+  id: z.number().int(),
+  text: z.string(),
+});
+
+const platformCoolOffSettingsSchema = z.object({
+  periods: z.array(platformResponsiblePeriodSchema),
+  reasons: z.array(platformResponsibleReasonSchema),
+});
+
+const platformSelfExclusionSettingsSchema = z.object({
+  periods: z.array(platformResponsiblePeriodSchema),
+});
+
+const platformExclusionSchema = z.object({
+  type: z.enum(['cooloff', 'self_exclusion']),
+  period: z.string(),
+  reason: z.string().nullable(),
+  status: z.enum(['CoolOff', 'SelfExclusion']),
+  expires_at: z.string().nullable(),
+  created_at: z.string().nullable(),
+});
+
+// Partner login rows include ip_address and browser. Only login_at leaves this client.
+const platformPlayerLoginsSchema = z.object({
+  logins: z.array(
+    z.object({
+      login_at: z.string().min(1),
+    }),
+  ),
+});
+
 export const platformProvidersSchema = z.array(platformProviderSchema);
 export const platformCategoriesSchema = z.array(platformCategorySchema);
 
@@ -150,6 +198,18 @@ export type PlatformLastPlayedPage = z.infer<typeof platformLastPlayedPageSchema
 export type PlatformMostPlayedPage = z.infer<typeof platformMostPlayedPageSchema>;
 export type PlatformProvider = z.infer<typeof platformProviderSchema>;
 export type PlatformCategory = z.infer<typeof platformCategorySchema>;
+export type PlatformRealityCheckSettings = z.infer<typeof platformRealityCheckSettingsSchema>;
+export type PlatformRealityCheck = z.infer<typeof platformRealityCheckSchema>;
+export type PlatformResponsiblePeriod = z.infer<typeof platformResponsiblePeriodSchema>;
+export type PlatformCoolOffSettings = z.infer<typeof platformCoolOffSettingsSchema>;
+export type PlatformSelfExclusionSettings = z.infer<typeof platformSelfExclusionSettingsSchema>;
+export type PlatformExclusion = z.infer<typeof platformExclusionSchema>;
+export type PlatformPlayerLogins = z.infer<typeof platformPlayerLoginsSchema>;
+
+export interface PlatformExclusionInput {
+  period_id: number;
+  reason_id?: number;
+}
 
 export interface PlatformPlayedFilters {
   page?: number;
@@ -408,6 +468,22 @@ export interface PlatformClient {
     accessToken: string,
     filters?: PlatformMostPlayedFilters,
   ): Promise<PlatformMostPlayedPage>;
+  getRealityCheckSettings(): Promise<PlatformRealityCheckSettings>;
+  getPlayerRealityCheck(playerId: number, accessToken: string): Promise<PlatformRealityCheck>;
+  setPlayerRealityCheck(
+    playerId: number,
+    accessToken: string,
+    value: number,
+  ): Promise<PlatformRealityCheck>;
+  getCoolOffSettings(): Promise<PlatformCoolOffSettings>;
+  getSelfExclusionSettings(): Promise<PlatformSelfExclusionSettings>;
+  excludePlayer(
+    playerId: number,
+    accessToken: string,
+    input: PlatformExclusionInput,
+  ): Promise<PlatformExclusion>;
+  /** HMAC only. The result never includes ip_address or browser. */
+  getPlayerLogins(playerId: number, limit: number): Promise<PlatformPlayerLogins>;
 }
 
 export class PlatformClientError extends Error {
@@ -759,6 +835,46 @@ export function createPlatformClient(options: CreatePlatformClientOptions): Plat
         },
       );
     },
+    getRealityCheckSettings() {
+      return request('GET', '/casino/realityCheckSettings', platformRealityCheckSettingsSchema);
+    },
+    getPlayerRealityCheck(playerId, accessToken) {
+      return request('GET', playerResourcePath(playerId, 'reality-check'), platformRealityCheckSchema, {
+        accessToken: requireAccessToken(accessToken),
+      });
+    },
+    setPlayerRealityCheck(playerId, accessToken, value) {
+      return request('POST', playerResourcePath(playerId, 'reality-check'), platformRealityCheckSchema, {
+        accessToken: requireAccessToken(accessToken),
+        json: { value: requireRealityMinutes(value) },
+      });
+    },
+    getCoolOffSettings() {
+      return request('GET', '/casino/coolOffSettings', platformCoolOffSettingsSchema);
+    },
+    getSelfExclusionSettings() {
+      return request('GET', '/casino/selfexclusionSettings', platformSelfExclusionSettingsSchema);
+    },
+    excludePlayer(playerId, accessToken, input) {
+      const json: PlatformExclusionInput = {
+        period_id: requireSelectionId(input.period_id),
+      };
+      if (input.reason_id !== undefined) {
+        json.reason_id = requireSelectionId(input.reason_id);
+      }
+      return request('POST', playerResourcePath(playerId, 'exclusion'), platformExclusionSchema, {
+        accessToken: requireAccessToken(accessToken),
+        json,
+      });
+    },
+    getPlayerLogins(playerId, limit) {
+      if (!Number.isSafeInteger(limit) || limit < 1) {
+        throw new PlatformClientError('request_failed');
+      }
+      const query = new URLSearchParams();
+      query.set('limit', String(limit));
+      return request('GET', playerResourcePath(playerId, 'logins'), platformPlayerLoginsSchema, { query });
+    },
   };
 
   async function launchGame(
@@ -799,6 +915,27 @@ export function createPlatformClient(options: CreatePlatformClientOptions): Plat
 
   function playerCollectionPath(playerId: number, suffix: 'favorites' | 'games/last-played' | 'games/most-played'): string {
     return `/player/${requirePlayerId(playerId)}/${suffix}`;
+  }
+
+  function playerResourcePath(
+    playerId: number,
+    resource: 'reality-check' | 'exclusion' | 'logins',
+  ): string {
+    return `/player/${requirePlayerId(playerId)}/${resource}`;
+  }
+
+  function requireSelectionId(id: number): number {
+    if (!Number.isSafeInteger(id)) {
+      throw new PlatformClientError('request_failed');
+    }
+    return id;
+  }
+
+  function requireRealityMinutes(value: number): number {
+    if (!Number.isFinite(value)) {
+      throw new PlatformClientError('request_failed');
+    }
+    return value;
   }
 
   function playedQuery(filters: PlatformMostPlayedFilters): URLSearchParams {
