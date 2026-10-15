@@ -27,6 +27,15 @@ const endSession = vi.hoisted(() =>
   }),
 );
 
+const authDialog = vi.hoisted(() => ({
+  openLogin: vi.fn(),
+  openRegistration: vi.fn(),
+}));
+
+vi.mock('../auth/auth-provider', () => ({
+  useAuthDialog: () => authDialog,
+}));
+
 vi.mock('@/components/auth/session', () => ({
   useSession: () => ({
     status: session.status,
@@ -86,6 +95,8 @@ afterEach(() => {
   calls.length = 0;
   session.status = 'pending';
   session.playerId = null;
+  authDialog.openLogin.mockClear();
+  authDialog.openRegistration.mockClear();
   act(() => root?.unmount());
   root = undefined;
   container = undefined;
@@ -193,5 +204,32 @@ describe('Sportsbook', () => {
     });
     await settle();
     expect(document.querySelector('iframe')).not.toBeNull();
+  });
+
+  it('opens registration from the sportsbook only for a guest', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => json('demo')));
+    session.status = 'guest';
+    await renderSports();
+    await settle();
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: 'https://platform.example',
+        data: { source: SPORTSBOOK_MESSAGE_SOURCE, action: 'sign_up' },
+      }),
+    );
+    expect(authDialog.openRegistration).toHaveBeenCalledTimes(1);
+
+    session.status = 'authenticated';
+    session.playerId = '42';
+    await renderSports();
+    await settle();
+    authDialog.openRegistration.mockClear();
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: 'https://platform.example',
+        data: { source: SPORTSBOOK_MESSAGE_SOURCE, action: 'sign_up' },
+      }),
+    );
+    expect(authDialog.openRegistration).not.toHaveBeenCalled();
   });
 });

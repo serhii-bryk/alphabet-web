@@ -25,6 +25,7 @@ import { useBalance } from '../auth/session';
 import { useCashier } from '../cashier/cashier-provider';
 import { openCasinoGameSection } from './casino-nav';
 import { useDemoPlayClock } from './demo-play-clock';
+import { gameHistoryAction, gameHistoryKey } from './game-history';
 import { GameWorkspace } from './game-workspace';
 import { isDesktopViewport } from './viewport';
 import {
@@ -42,7 +43,6 @@ import {
 } from './workspace-state';
 
 const defaultLaunchers: GameLaunchers = { demo: requestDemoLaunch, real: requestRealLaunch };
-const historyKey = '__brandGameView';
 const noop = () => {};
 
 export interface GameLauncherApi {
@@ -146,13 +146,9 @@ export function GameLaunchProvider({
     if (openIdsRef.current.size > 0) return;
     setBrowsing(false);
     restoreFocusRef.current = true;
-    if (isDesktopViewport()) {
-      historyEntryRef.current = null;
-      return;
-    }
     const entry = historyEntryRef.current;
     historyEntryRef.current = null;
-    if (entry === null || window.history.state?.[historyKey] !== entry) return;
+    if (entry === null || window.history.state?.[gameHistoryKey] !== entry) return;
     pendingBackRef.current = window.setTimeout(() => {
       pendingBackRef.current = null;
     }, 1_000);
@@ -201,11 +197,11 @@ export function GameLaunchProvider({
         target,
         attempt,
         frame: defaultFrame(openIdsRef.current.size - 1),
-        presentation: desktop ? 'page' : 'floating',
+        presentation: 'page',
       });
       setBrowsing(false);
-      if (!isDesktopViewport() && historyEntryRef.current === null) {
-        window.history.pushState({ [historyKey]: attempt }, '');
+      if (historyEntryRef.current === null) {
+        window.history.pushState({ [gameHistoryKey]: attempt }, '');
         historyEntryRef.current = attempt;
       }
     },
@@ -272,28 +268,22 @@ export function GameLaunchProvider({
   const onAddGame = useCallback(() => {
     if (openIdsRef.current.size >= MAX_OPEN_GAMES) {
       dispatch({ type: 'showLimit' });
-      if (!isDesktopViewport()) setBrowsing(false);
       return;
     }
-    if (isDesktopViewport()) {
-      dispatch({ type: 'armMultiGame' });
-      setBrowsing(true);
-      openCasinoGameSection(pathname, (href) => router.push(href));
-      return;
-    }
+    dispatch({ type: 'armMultiGame' });
     setBrowsing(true);
+    openCasinoGameSection(pathname, (href) => router.push(href));
   }, [pathname, router]);
 
   useEffect(() => {
     const controllers = controllersRef.current;
     const onPopState = () => {
-      if (isDesktopViewport()) return;
-      if (pendingBackRef.current !== null) {
-        window.clearTimeout(pendingBackRef.current);
+      const pending = pendingBackRef.current !== null;
+      if (pending) {
+        window.clearTimeout(pendingBackRef.current ?? undefined);
         pendingBackRef.current = null;
-        return;
       }
-      if (historyEntryRef.current === null) return;
+      if (gameHistoryAction(window.history.state, historyEntryRef.current, pending) !== 'close') return;
       historyEntryRef.current = null;
       for (const id of [...openIdsRef.current]) forget(id);
       restoreFocusRef.current = true;
@@ -306,6 +296,27 @@ export function GameLaunchProvider({
       for (const controller of controllers.values()) controller.abort();
     };
   }, [forget]);
+
+  const seenPath = useRef(pathname);
+  useEffect(() => {
+    if (seenPath.current === pathname) return;
+    seenPath.current = pathname;
+    if (openIdsRef.current.size > 0) setBrowsing(true);
+  }, [pathname]);
+
+  useEffect(() => {
+    const onClick = (event: MouseEvent) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (openIdsRef.current.size === 0) return;
+      const anchor = (event.target as Element | null)?.closest('a');
+      if (!anchor || anchor.target === '_blank') return;
+      const url = new URL(anchor.href, window.location.href);
+      if (url.origin !== window.location.origin || url.pathname !== window.location.pathname) return;
+      setBrowsing(true);
+    };
+    document.addEventListener('click', onClick);
+    return () => document.removeEventListener('click', onClick);
+  }, []);
 
   useEffect(() => {
     const wasAuthenticated = authenticatedRef.current;

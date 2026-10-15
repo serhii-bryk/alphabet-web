@@ -161,7 +161,7 @@ export interface GameLaunchErrorResponse {
 export interface AuthSession {
   authenticated: true;
   playerId: string;
-  email: string;
+  email: string | null;
   currency: string | null;
   expiresAt: string; // ISO
 }
@@ -176,7 +176,10 @@ export type AuthErrorCode =
   | 'invalid_credentials'
   | 'invalid_login'
   | 'auth_unavailable'
-  | 'session_ended';
+  | 'session_ended'
+  | 'external_auth_rejected'
+  | 'external_auth_unavailable'
+  | 'account_restricted';
 
 export interface AuthErrorResponse {
   error: { code: AuthErrorCode; message: string };
@@ -184,7 +187,7 @@ export interface AuthErrorResponse {
 
 export interface PlayerProfile {
   playerId: string;
-  email: string;
+  email: string | null;
   firstName: string;
   lastName: string;
   currency: string | null;
@@ -274,6 +277,7 @@ export interface PaymentMethod {
   maxAmount: number | null;
   fields: PaymentMethodField[];
   test: boolean;
+  mock: boolean;
 }
 
 export interface PaymentMethodsResponse {
@@ -338,7 +342,43 @@ export const supportNavigateTargets = [
   'responsible_gaming',
   'support',
   'journal',
+  'favorites',
+  'recently_played',
 ] as const;
+
+export const supportFaqIds = [
+  'registration',
+  'verification',
+  'deposits',
+  'withdrawals',
+  'wallet',
+  'casino',
+  'sports',
+  'promotions',
+  'favorites',
+  'account',
+  'responsible',
+  'contact',
+] as const;
+
+export const supportPromotionSlugs = ['welcome', 'weekend-live', 'journal-drops'] as const;
+
+export const supportFillFields = [
+  'search',
+  'catalog_search',
+  'deposit_amount',
+  'withdraw_amount',
+  'email',
+  'first_name',
+  'last_name',
+  'country',
+  'phone',
+] as const;
+
+export type SupportFaqId = (typeof supportFaqIds)[number];
+export type SupportPromotionSlug = (typeof supportPromotionSlugs)[number];
+export type SupportFillField = (typeof supportFillFields)[number];
+export type SupportChatMode = 'support' | 'assistant';
 
 export type SupportNavigateTarget = (typeof supportNavigateTargets)[number];
 
@@ -358,7 +398,21 @@ export type SupportAction =
   | { type: 'open_cashier'; mode: 'deposit' | 'withdraw' }
   | { type: 'open_login' }
   | { type: 'open_registration' }
-  | { type: 'open_human_support' };
+  | { type: 'open_human_support' }
+  | { type: 'scroll_to'; section: 'games' }
+  | { type: 'open_promotion'; slug: SupportPromotionSlug }
+  | { type: 'open_game'; gameId: string }
+  | { type: 'fill_field'; field: SupportFillField; value: string };
+
+export interface SupportCatalogGame {
+  id: string;
+  slug: string;
+  title: string;
+  kind: 'casino' | 'live';
+  imageUrl: string | null;
+  demoPlayEnabled: boolean;
+  active: boolean;
+}
 
 export type SupportConfidence = 'known' | 'general' | 'unknown';
 
@@ -379,13 +433,21 @@ export interface SupportChatTurn {
 export interface SupportChatRequest {
   messages: SupportChatTurn[];
   context: SupportChatContext;
+  mode?: SupportChatMode;
+  faqId?: SupportFaqId;
 }
+
+export type SupportReplySource = 'faq' | 'rules' | 'assistant' | 'model';
 
 export interface SupportChatResponse {
   message: string;
   actions: SupportAction[];
   confidence: SupportConfidence;
   escalate: boolean;
+  source: SupportReplySource;
+  autoRun: boolean;
+  games?: SupportCatalogGame[];
+  related?: SupportFaqId[];
 }
 
 export type SupportChannelId = 'email' | 'telegram' | 'whatsapp' | 'helpdesk';
@@ -406,7 +468,9 @@ export type SupportChatErrorCode =
   | 'ai_unavailable'
   | 'ai_timeout'
   | 'ai_response_invalid'
-  | 'support_unavailable';
+  | 'support_unavailable'
+  | 'rate_limited'
+  | 'budget_exhausted';
 
 export interface SupportChatErrorResponse {
   error: { code: SupportChatErrorCode; message: string };

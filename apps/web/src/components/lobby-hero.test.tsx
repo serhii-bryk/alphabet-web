@@ -1,5 +1,6 @@
 import { createElement, type AnchorHTMLAttributes, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NextIntlClientProvider } from 'next-intl';
 import { describe, expect, it, vi } from 'vitest';
 import type { CatalogGame, CatalogLobbyResponse } from '@brand/contracts';
@@ -72,22 +73,16 @@ const lobby: CatalogLobbyResponse = {
 
 function renderLobby() {
   return renderToStaticMarkup(
-    <NextIntlClientProvider locale="en" messages={messages}>
-      <LobbyView lobby={lobby} title="Casino" pathname="/casino" filters={{}} />
-    </NextIntlClientProvider>,
+    <QueryClientProvider client={new QueryClient()}>
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <LobbyView lobby={lobby} title="Casino" pathname="/casino" filters={{}} />
+      </NextIntlClientProvider>
+    </QueryClientProvider>,
   );
 }
 
-function buttonOpening(html: string, label: string) {
-  const marker = `aria-label="${label}, Coming soon"`;
-  const index = html.indexOf(marker);
-  expect(index, marker).toBeGreaterThan(-1);
-  const start = html.lastIndexOf('<button', index);
-  return html.slice(start, html.indexOf('>', index));
-}
-
 describe('lobby hero', () => {
-  it('exposes register and disabled social sign-in for guests', () => {
+  it('exposes register and email sign-up for guests', () => {
     session.status = 'guest';
     const html = renderLobby();
 
@@ -96,9 +91,8 @@ describe('lobby hero', () => {
     expect(html).toContain('type="password"');
     expect(html).toContain('>Continue<');
     expect(html).not.toContain('href="/register"');
-    for (const label of ['Google', 'Apple', 'Phone']) {
-      expect(buttonOpening(html, label)).toContain('disabled');
-    }
+    expect(html).not.toContain('Coming soon');
+    expect(html).not.toContain('Continue with Telegram');
     expect(html).toContain('href="/casino"');
     expect(html).toContain('href="/live-casino"');
     expect(html).toContain('href="/sports"');
@@ -119,9 +113,8 @@ describe('lobby hero', () => {
     expect(html).not.toContain('>Register<');
     expect(html).not.toContain('type="email"');
     expect(html).not.toContain('type="password"');
-    expect(html).not.toContain('aria-label="Google, Coming soon"');
-    expect(html).not.toContain('aria-label="Apple, Coming soon"');
-    expect(html).not.toContain('aria-label="Phone, Coming soon"');
+    expect(html).not.toContain('Coming soon');
+    expect(html).not.toContain('Continue with Telegram');
     expect(html).toContain('href="#games"');
     expect(html).toContain('Explore sports');
     expect(html).toContain('href="/sports"');
@@ -139,6 +132,6 @@ describe('lobby hero', () => {
     expect(html).toContain('href="/sports"');
     expect(html).not.toContain('>Register<');
     expect(html).not.toContain('type="email"');
-    expect(html).not.toContain('aria-label="Google, Coming soon"');
+    expect(html).not.toContain('Coming soon');
   });
 });

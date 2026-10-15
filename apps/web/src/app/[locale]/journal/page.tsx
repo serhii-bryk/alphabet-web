@@ -15,11 +15,11 @@ export default async function Page() {
       title={t('journalTitle')}
       lede={t('journalLede')}
     >
-      <section className="rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] p-5">
+      <section id="journal-lobby" tabIndex={-1} className="lobby-anchor rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] p-5 outline-none">
         <h2 className="text-lg font-black">{t('journalLobbyTitle')}</h2>
         <p className="mt-2 text-[var(--muted)]">{t('journalLobbyBody')}</p>
       </section>
-      <section className="rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] p-5">
+      <section id="journal-live" tabIndex={-1} className="lobby-anchor rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] p-5 outline-none">
         <h2 className="text-lg font-black">{t('journalLiveTitle')}</h2>
         <p className="mt-2 text-[var(--muted)]">{t('journalLiveBody')}</p>
       </section>

@@ -10,109 +10,47 @@ import { GameWindow } from './game-window';
 import type { DemoPromptLevel } from './demo-play';
 import { MAX_OPEN_GAMES, type Frame, type GamePanel } from './workspace-state';
 
-export function ShellPortal({ children }: { children: ReactNode }) {
-  const [shell, setShell] = useState<HTMLElement | null>(null);
+export function SlotPortal({ id, children }: { id: string; children: ReactNode }) {
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {
-    setShell(document.getElementById('app-shell'));
-  }, []);
-  if (!shell) return null;
-  return createPortal(children, shell);
+    // The slot is committed with the shell, so it is only available after this render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSlot(document.getElementById(id));
+  }, [id]);
+  if (!slot) return null;
+  return createPortal(children, slot);
 }
 
-export function DesktopGameLayer({
+export function OpenGamesBar({
   panels,
   focusedId,
   limitNotice,
-  demoLevel = 'none',
-  onCloseAll,
   onClosePanel,
-  onRetry,
-  onFrameLoad,
-  onLoadTimeout,
-  onSignIn,
   onFocus,
-  browsing = false,
-  onKeepOpen,
-  onMinimize,
-  onMaximize,
-  onRestore,
-  onMove,
-  onResize,
   onAddGame,
   onDismissLimit,
-  onDismissPrompt,
-  onRegister,
-  onPromptSignIn,
 }: {
   panels: GamePanel[];
   focusedId: string | null;
   limitNotice: boolean;
-  demoLevel?: DemoPromptLevel;
-  browsing?: boolean;
-  onCloseAll: () => void;
   onClosePanel: (id: string) => void;
-  onRetry: (id: string) => void;
-  onFrameLoad: (id: string, attempt: number) => void;
-  onLoadTimeout: (id: string, attempt: number) => void;
-  onSignIn: (id: string) => void;
   onFocus: (id: string) => void;
-  onKeepOpen: (id: string) => void;
-  onMinimize: (id: string) => void;
-  onMaximize: (id: string) => void;
-  onRestore: (id: string) => void;
-  onMove: (id: string, x: number, y: number) => void;
-  onResize: (id: string, frame: Frame) => void;
   onAddGame: () => void;
   onDismissLimit: () => void;
-  onDismissPrompt: (level: Exclude<DemoPromptLevel, 'none'>) => void;
-  onRegister: (opener: HTMLElement) => void;
-  onPromptSignIn: (opener: HTMLElement) => void;
 }) {
   const t = useTranslations('workspace');
-  const focused = panels.find((panel) => panel.id === focusedId) ?? panels[0];
   const atLimit = panels.length >= MAX_OPEN_GAMES;
   const minimized = panels.filter((panel) => panel.presentation === 'minimized');
   const switcherPanels = panels.filter((panel) => panel.presentation !== 'minimized');
-  const showSwitcher = browsing || switcherPanels.length > 1;
-  const pageMode = panels.some((panel) => panel.presentation === 'page');
-  if (!focused) return null;
+  const pageId = panels.find((panel) => panel.presentation === 'page')?.id ?? null;
+  if (panels.length === 0) return null;
 
   return (
-    <div id="desktop-game-layer" data-desktop-game-layer="" data-game-live-host="" className="desktop-game-layer">
-      {panels.map((panel) => (
-        <GameWindow
-          key={panel.id}
-          panel={panel}
-          focused={panel.id === focused.id}
-          onFocus={() => onFocus(panel.id)}
-          onClose={() => onClosePanel(panel.id)}
-          browsing={browsing}
-          clearBottom={showSwitcher}
-          onKeepOpen={() => onKeepOpen(panel.id)}
-          onAddGame={onAddGame}
-          onMinimize={() => onMinimize(panel.id)}
-          onMaximize={() => onMaximize(panel.id)}
-          onRestore={() => onRestore(panel.id)}
-          onMove={(x, y) => onMove(panel.id, x, y)}
-          onResize={(frame) => onResize(panel.id, frame)}
-          onRetry={() => onRetry(panel.id)}
-          onFrameLoad={(attempt) => onFrameLoad(panel.id, attempt)}
-          onLoadTimeout={(attempt) => onLoadTimeout(panel.id, attempt)}
-          onSignIn={() => onSignIn(panel.id)}
-          onBackToLobby={onCloseAll}
-        />
-      ))}
-      <DemoPrompt
-        level={demoLevel}
-        className="absolute inset-x-3 bottom-24 z-[1000000]"
-        onDismiss={onDismissPrompt}
-        onRegister={onRegister}
-        onSignIn={onPromptSignIn}
-      />
+    <div className="open-games-bar pointer-events-none">
       {limitNotice && (
         <p
           role="status"
-          className="motion-enter pointer-events-auto absolute inset-x-3 bottom-20 z-[1000000] rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm shadow-[var(--shadow-2)]"
+          className="pointer-events-auto mb-2 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm shadow-[var(--shadow-2)]"
         >
           {t('gameLimit')}
           <button type="button" className="ms-3 font-semibold underline" onClick={onDismissLimit}>
@@ -120,8 +58,8 @@ export function DesktopGameLayer({
           </button>
         </p>
       )}
-      <div className="pointer-events-none absolute inset-x-3 bottom-3 z-[1000001] flex items-end gap-3">
-        {showSwitcher && (
+      <div className="flex items-end gap-3">
+        {switcherPanels.length > 0 && (
           <div
             role="tablist"
             aria-label={t('openGames')}
@@ -130,18 +68,18 @@ export function DesktopGameLayer({
           >
             {switcherPanels.map((panel) => {
               const title = panel.launch.target.game.title;
-              const main = panel.presentation === 'page';
+              const selected = pageId ? panel.id === pageId : panel.id === focusedId;
               return (
                 <div
                   key={panel.id}
                   className={`fade-enter flex h-12 shrink-0 items-center rounded-[var(--radius-md)] border ${
-                    main ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-[var(--line)] bg-[var(--bg)]'
+                    selected ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-[var(--line)] bg-[var(--bg)]'
                   }`}
                 >
                   <button
                     type="button"
                     role="tab"
-                    aria-selected={main}
+                    aria-selected={selected}
                     onClick={() => onFocus(panel.id)}
                     className="pressable flex h-full items-center gap-2 rounded-[var(--radius-md)] px-2"
                   >
@@ -155,7 +93,7 @@ export function DesktopGameLayer({
                     aria-label={t('closeGame', { title })}
                     onClick={() => onClosePanel(panel.id)}
                     data-close=""
-                    className="window-control me-1 inline-grid size-8 items-center justify-center rounded-[var(--radius-sm)]"
+                    className="window-control me-1 inline-grid size-8 place-items-center rounded-[var(--radius-sm)]"
                   >
                     <X aria-hidden size={14} />
                   </button>
@@ -177,7 +115,7 @@ export function DesktopGameLayer({
         {minimized.length > 0 && (
           <div
             aria-label={t('openGames')}
-            className="motion-enter pointer-events-auto flex min-w-0 flex-1 gap-2 overflow-x-auto rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-2 shadow-[var(--shadow-2)]"
+            className="pointer-events-auto flex min-w-0 flex-1 gap-2 overflow-x-auto rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-2 shadow-[var(--shadow-2)]"
           >
             {minimized.map((panel) => {
               const title = panel.launch.target.game.title;
@@ -201,7 +139,7 @@ export function DesktopGameLayer({
                     aria-label={t('closeGame', { title })}
                     onClick={() => onClosePanel(panel.id)}
                     data-close=""
-                    className="window-control me-1 inline-grid size-8 items-center justify-center rounded-[var(--radius-sm)]"
+                    className="window-control me-1 inline-grid size-8 place-items-center rounded-[var(--radius-sm)]"
                   >
                     <X aria-hidden size={14} />
                   </button>
@@ -210,19 +148,120 @@ export function DesktopGameLayer({
             })}
           </div>
         )}
-        {!pageMode && !showSwitcher && (
-          <button
-            type="button"
-            data-add-game=""
-            onClick={onAddGame}
-            disabled={atLimit}
-            className="add-game-button btn btn-primary pointer-events-auto ms-auto inline-flex h-12 shrink-0 items-center gap-2 rounded-[var(--radius-md)] px-5 text-base font-black disabled:opacity-50"
-          >
-            <Plus aria-hidden size={20} />
-            {t('addGameProminent')}
-          </button>
-        )}
       </div>
     </div>
+  );
+}
+
+export function DesktopGameLayer({
+  panels,
+  focusedId,
+  limitNotice,
+  demoLevel = 'none',
+  onCloseAll,
+  onClosePanel,
+  onRetry,
+  onFrameLoad,
+  onLoadTimeout,
+  onSignIn,
+  onFocus,
+  browsing = false,
+  showDeposit = false,
+  balanceLabel = null,
+  onDeposit,
+  onKeepOpen,
+  onMinimize,
+  onMaximize,
+  onRestore,
+  onMove,
+  onResize,
+  onAddGame,
+  onDismissLimit,
+  onDismissPrompt,
+  onRegister,
+  onPromptSignIn,
+}: {
+  panels: GamePanel[];
+  focusedId: string | null;
+  limitNotice: boolean;
+  demoLevel?: DemoPromptLevel;
+  browsing?: boolean;
+  showDeposit?: boolean;
+  balanceLabel?: string | null;
+  onDeposit?: () => void;
+  onCloseAll: () => void;
+  onClosePanel: (id: string) => void;
+  onRetry: (id: string) => void;
+  onFrameLoad: (id: string, attempt: number) => void;
+  onLoadTimeout: (id: string, attempt: number) => void;
+  onSignIn: (id: string) => void;
+  onFocus: (id: string) => void;
+  onKeepOpen: (id: string) => void;
+  onMinimize: (id: string) => void;
+  onMaximize: (id: string) => void;
+  onRestore: (id: string) => void;
+  onMove: (id: string, x: number, y: number) => void;
+  onResize: (id: string, frame: Frame) => void;
+  onAddGame: () => void;
+  onDismissLimit: () => void;
+  onDismissPrompt: (level: Exclude<DemoPromptLevel, 'none'>) => void;
+  onRegister: (opener: HTMLElement) => void;
+  onPromptSignIn: (opener: HTMLElement) => void;
+}) {
+  const focused = panels.find((panel) => panel.id === focusedId) ?? panels[0];
+  const pageActive = !browsing && panels.some((panel) => panel.presentation === 'page');
+  if (!focused) return null;
+
+  return (
+    <>
+      <OpenGamesBar
+        panels={panels}
+        focusedId={focused.id}
+        limitNotice={limitNotice}
+        onClosePanel={onClosePanel}
+        onFocus={onFocus}
+        onAddGame={onAddGame}
+        onDismissLimit={onDismissLimit}
+      />
+      <div
+        id="desktop-game-layer"
+        data-desktop-game-layer=""
+        data-game-live-host=""
+        className={`game-page-host${pageActive ? '' : ' game-page-host-parked pointer-events-none'}`}
+      >
+        {panels.map((panel) => (
+          <GameWindow
+            key={panel.id}
+            panel={panel}
+            focused={panel.id === focused.id}
+            onFocus={() => onFocus(panel.id)}
+            onClose={() => onClosePanel(panel.id)}
+            browsing={browsing}
+            showDeposit={showDeposit}
+            balanceLabel={balanceLabel}
+            onDeposit={onDeposit}
+            onKeepOpen={() => onKeepOpen(panel.id)}
+            onAddGame={onAddGame}
+            onMinimize={() => onMinimize(panel.id)}
+            onMaximize={() => onMaximize(panel.id)}
+            onRestore={() => onRestore(panel.id)}
+            onMove={(x, y) => onMove(panel.id, x, y)}
+            onResize={(frame) => onResize(panel.id, frame)}
+            onRetry={() => onRetry(panel.id)}
+            onFrameLoad={(attempt) => onFrameLoad(panel.id, attempt)}
+            onLoadTimeout={(attempt) => onLoadTimeout(panel.id, attempt)}
+            onSignIn={() => onSignIn(panel.id)}
+            onBackToLobby={onCloseAll}
+          />
+        ))}
+        <DemoPrompt
+          level={demoLevel}
+          className="game-demo-prompt pointer-events-none absolute inset-x-3 z-30 flex justify-center"
+          onDismiss={onDismissPrompt}
+          onRegister={onRegister}
+          onSignIn={onPromptSignIn}
+        />
+      </div>
+    </>
   );
 }

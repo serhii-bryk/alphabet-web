@@ -1,4 +1,4 @@
-import { isTestDepositEnabled, resolveTestMaxAmount } from '@brand/domain';
+import { isMockPaymentsEnabled, isTestDepositEnabled, resolveTestMaxAmount } from '@brand/domain';
 
 export interface PaymentsConfig {
   finalpayUrl: string | undefined;
@@ -10,6 +10,7 @@ export interface PaymentsConfig {
   webOrigin: string;
   testMode: boolean;
   testMaxAmount: number;
+  mockMode: boolean;
   providerConfigured: boolean;
 }
 
@@ -18,6 +19,11 @@ export function readPaymentsConfig(env: Record<string, string | undefined>): Pay
   const finalpaySecret = readSecret(env.FINALPAY_SECRET);
   const callbackBaseUrl = readOrigin(env.PAYMENTS_CALLBACK_BASE_URL);
   const nodeEnv = env.NODE_ENV ?? process.env.NODE_ENV;
+  const liveBlocked = blocksLiveFinalpay(
+    env.FINALPAY_URL,
+    env.FINALPAY_USER_PREFIX,
+    env.FINALPAY_TRANSACTION_PREFIX,
+  );
   return {
     finalpayUrl,
     finalpaySecret,
@@ -28,8 +34,30 @@ export function readPaymentsConfig(env: Record<string, string | undefined>): Pay
     webOrigin: readOrigin(env.WEB_ORIGIN) ?? 'http://localhost:3000',
     testMode: isTestDepositEnabled(env.PAYMENTS_TEST_MODE, nodeEnv),
     testMaxAmount: resolveTestMaxAmount(env.PAYMENTS_TEST_MAX_AMOUNT),
-    providerConfigured: Boolean(finalpayUrl && finalpaySecret && callbackBaseUrl),
+    mockMode: isMockPaymentsEnabled(env.PAYMENTS_MOCK_MODE, nodeEnv),
+    providerConfigured: Boolean(finalpayUrl && finalpaySecret && callbackBaseUrl) && !liveBlocked,
   };
+}
+
+const foreignUserPrefixes = new Set(['2616~', '2002~', 'test-', 'cwtest-']);
+const foreignTransactionPrefixes = new Set(['99999', 'cwtest-', 'test-']);
+
+export function blocksLiveFinalpay(
+  url: string | undefined,
+  userPrefix: string | undefined,
+  transactionPrefix: string | undefined,
+): boolean {
+  const user = userPrefix?.trim() ?? '';
+  const transaction = transactionPrefix?.trim() ?? '';
+  if (user && foreignUserPrefixes.has(user)) return true;
+  if (transaction && foreignTransactionPrefixes.has(transaction)) return true;
+  if (!url) return false;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === 'finalpay.app' || host.endsWith('.finalpay.app');
+  } catch {
+    return false;
+  }
 }
 
 function readSecret(value: string | undefined): string | undefined {

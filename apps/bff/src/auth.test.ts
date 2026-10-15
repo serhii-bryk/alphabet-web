@@ -378,3 +378,147 @@ describe('auth routes', () => {
     expect(catalog.status).toBe(200);
   });
 });
+
+const widgetUser = {
+  id: 900000001,
+  first_name: 'Telegram',
+  last_name: 'Player',
+  username: 'telegram_player',
+  auth_date: 1_700_000_000,
+  hash: 'ab'.repeat(32),
+};
+
+describe('telegram auth', () => {
+  it('creates a session for a new Telegram player and reuses it for the same identity', async () => {
+    const fetcher = vi.fn<typeof fetch>(async (input: RequestInfo | URL) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith('/player/login/telegram')) {
+        return Response.json({
+          ...loginResponse,
+          profile: { id: 42, email: null, currency },
+        });
+      }
+      if (path.endsWith('/player/42/profile')) {
+        return Response.json({
+          profile: { id: 42, email: null, first_name: 'Telegram', currency, email_verified: false },
+        });
+      }
+      if (path.endsWith('/logout')) {
+        return Response.json({ message: 'Logged out', sessions_ended: 1 });
+      }
+      return new Response('unexpected', { status: 500 });
+    });
+    const app = createApp({
+      env: { ...platformEnv, TELEGRAM_BOT_ID: '123456789' },
+      fetch: fetcher,
+      now: () => start,
+    });
+
+    const providers = await app.request('/api/auth/providers');
+    expect(await providers.json()).toEqual({ telegram: { botId: '123456789' } });
+
+    const response = await app.request('/api/auth/telegram', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'user-agent': 'Browser',
+        'x-forwarded-for': '203.0.113.10',
+      },
+      body: JSON.stringify(widgetUser),
+    });
+    const text = await response.text();
+    expect(response.status).toBe(200);
+    expect(JSON.parse(text)).toEqual({
+      authenticated: true,
+      playerId: '42',
+      email: null,
+      currency: 'EUR',
+      expiresAt: new Date(start + 3_600_000).toISOString(),
+    });
+    expect(text).not.toContain(widgetUser.hash);
+    expect(text).not.toContain('access_token');
+    expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual({
+      flow: 'login_widget',
+      payload: widgetUser,
+      ip_number: '203.0.113.10',
+      browser: 'Browser',
+      domain: 'http://localhost:3000',
+    });
+
+    const session = await app.request('/api/session', { headers: { cookie: cookiePair(response) } });
+    expect(await session.json()).toEqual(JSON.parse(text));
+
+    const logout = await app.request('/api/auth/logout', {
+      method: 'POST',
+      headers: { cookie: cookiePair(response) },
+    });
+    expect(logout.status).toBe(200);
+    expect(String(fetcher.mock.calls.at(-1)?.[0])).toContain('/player/42/logout');
+  });
+
+  it('hides Telegram when the bot id is missing or not numeric', async () => {
+    const missing = createApp({ env: platformEnv, now: () => start });
+    expect(await (await missing.request('/auth/providers')).json()).toEqual({ telegram: null });
+    const invalid = createApp({
+      env: { ...platformEnv, TELEGRAM_BOT_ID: 'not-a-bot' },
+      now: () => start,
+    });
+    expect(await (await invalid.request('/api/auth/providers')).json()).toEqual({ telegram: null });
+  });
+
+  it('rejects a stale, future, or malformed widget payload before calling Platform', async () => {
+    const fetcher = vi.fn();
+    const app = createApp({ env: platformEnv, fetch: fetcher, now: () => start });
+    const cases = [
+      { ...widgetUser, auth_date: 1_600_000_000 },
+      { ...widgetUser, auth_date: 1_800_000_000 },
+      { ...widgetUser, hash: 'not-a-hash' },
+      { ...widgetUser, username: 'telegram_player', extra: 'nope' },
+    ];
+    for (const body of cases) {
+      const response = await app.request('/api/auth/telegram', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      expect(response.status).toBe(401);
+      expect(await response.json()).toEqual({
+        error: { code: 'external_auth_rejected', message: 'Telegram sign-in was not accepted' },
+      });
+    }
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [401, 'invalid_login_method_authentication', 401, 'external_auth_rejected'],
+    [404, 'login_method_not_found', 502, 'external_auth_unavailable'],
+    [403, 'player_has_excluded', 403, 'account_restricted'],
+  ] as const)('maps Platform %s %s to %s %s', async (status, platformCode, httpStatus, code) => {
+    const fetcher = vi.fn(async () =>
+      Response.json({ error: 'hidden', code: platformCode }, { status }),
+    );
+    const app = createApp({ env: platformEnv, fetch: fetcher, now: () => start });
+    const response = await app.request('/api/auth/telegram', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(widgetUser),
+    });
+    const text = await response.text();
+    expect(response.status).toBe(httpStatus);
+    expect(JSON.parse(text)).toEqual({ error: { code, message: expect.any(String) } });
+    expect(text).not.toContain('hidden');
+    expect(text).not.toContain(widgetUser.hash);
+  });
+
+  it('rejects a foreign Origin without calling Platform', async () => {
+    const fetcher = vi.fn();
+    const app = createApp({ env: platformEnv, fetch: fetcher, now: () => start });
+    const response = await app.request('/api/auth/telegram', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://evil.example' },
+      body: JSON.stringify(widgetUser),
+    });
+    expect(response.status).toBe(403);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+});

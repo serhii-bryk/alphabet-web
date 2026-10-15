@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import type { GameLaunchErrorCode } from '@brand/contracts';
+import type { GameLaunchErrorCode, SupportCatalogGame } from '@brand/contracts';
 import type { AccountUseCases, AuthUseCases, CatalogUseCases, GameLaunchUseCases, PaymentIntentStore, PaymentUseCases, PersonalizationUseCases, RefreshIfNeededResult, RegistrationUseCases, SportsLaunchUseCases } from '@brand/domain';
 import {
   createAccountUseCases,
@@ -19,7 +19,13 @@ import { cors } from 'hono/cors';
 import { z } from 'zod';
 import { isAccountPath, registerAccountRoutes } from './account-routes.js';
 import { isPersonalizationPath, registerPersonalizationRoutes } from './personalization-routes.js';
-import { applyResolvedSession, isAuthPath, registerAuthRoutes, resolvePlayerSession } from './auth-routes.js';
+import {
+  applyResolvedSession,
+  isAuthPath,
+  readTelegramBotId,
+  registerAuthRoutes,
+  resolvePlayerSession,
+} from './auth-routes.js';
 import { createFinalpayClient } from './finalpay.js';
 import { createFilePaymentIntentStore } from './payment-intents.js';
 import { isPaymentCallbackPath, isPaymentPath, registerPaymentRoutes } from './payment-routes.js';
@@ -36,8 +42,22 @@ import {
 } from './session-cookie.js';
 import { isSportsLaunchPath, registerSportsRoutes } from './sports-routes.js';
 import { readSupportChannels } from './support/channels.js';
-import { createSupportAiProvider, readSupportAiConfig, type SupportAiProvider } from './support/provider.js';
+import { createFileAiBudget, createMemoryAiBudget, type AiBudgetStore } from './support/budget.js';
+import { readAiChatLimits, readOpenAiLiveConfig } from './support/limits.js';
+import { createSupportAiProvider, type SupportAiProvider } from './support/provider.js';
 import { isSupportPath, registerSupportRoutes, supportSecretValues } from './support-routes.js';
+import {
+  CATALOG_LIST_CACHE_MS,
+  SEARCH_CACHE_MAX,
+  SEARCH_CACHE_MS,
+  SEARCH_RATE_LIMIT,
+  SEARCH_RATE_WINDOW_MS,
+  createInflight,
+  createRateLimiter,
+  createResponseCache,
+  searchCacheKey,
+  searchClientKey,
+} from './catalog-guard.js';
 
 const providerSchema = z.object({
   id: z.string(),
@@ -110,7 +130,7 @@ const lobbyResponseSchema = z.object({
 const optionalText = z.string().trim().min(1).max(200).optional();
 const querySchema = z
   .object({
-    page: z.coerce.number().int().positive().optional(),
+    page: z.coerce.number().int().positive().max(1_000).optional(),
     limit: z.coerce.number().int().positive().max(100).optional(),
     per_page: z.coerce.number().int().positive().max(100).optional(),
     search: optionalText,
@@ -172,6 +192,7 @@ export interface CreateAppOptions {
   intentStore?: PaymentIntentStore;
   payments?: PaymentUseCases;
   supportAi?: SupportAiProvider | null;
+  supportBudget?: AiBudgetStore;
 }
 
 export function createApp(options: CreateAppOptions = {}) {
@@ -207,6 +228,7 @@ export function createApp(options: CreateAppOptions = {}) {
     secret: readSessionSecret(env),
     webOrigin,
     now,
+    telegramBotId: readTelegramBotId(env),
     inflight,
   };
   const app = new Hono();
@@ -216,21 +238,62 @@ export function createApp(options: CreateAppOptions = {}) {
   app.get('/status', (c) => c.json({ service: 'bff', status: 'ready' }));
 
   const catalogRoutes = new Hono();
+  const searchLimiter = createRateLimiter(SEARCH_RATE_LIMIT, SEARCH_RATE_WINDOW_MS, now);
+  const searchCache = createResponseCache<unknown>(SEARCH_CACHE_MS, SEARCH_CACHE_MAX, now);
+  const listCache = createResponseCache<unknown>(CATALOG_LIST_CACHE_MS, 4, now);
+  const catalogInflight = createInflight<unknown>();
 
   catalogRoutes.get('/games', async (c) => {
     const query = querySchema.safeParse(parseQuery(c.req.url));
     if (!query.success) {
       return c.json(errorBody('invalid_query', 'Invalid catalog query'), 400);
     }
+    if (query.data.search) {
+      const client = searchClientKey((name) => c.req.header(name));
+      if (!searchLimiter.allow(`games:${client}`)) {
+        c.header('cache-control', 'no-store');
+        c.header('retry-after', '2');
+        return c.json(errorBody('rate_limited', 'Too many search requests. Please wait a moment.'), 429);
+      }
+      const key = searchCacheKey(query.data);
+      const cached = searchCache.get(key);
+      if (cached) {
+        c.header('cache-control', 'no-store');
+        return c.json(cached);
+      }
+      const body = await catalogInflight.run(key, async () => {
+        const parsed = gamesResponseSchema.parse(await catalog.listGames(query.data));
+        searchCache.set(key, parsed);
+        return parsed;
+      });
+      c.header('cache-control', 'no-store');
+      return c.json(body);
+    }
     return c.json(gamesResponseSchema.parse(await catalog.listGames(query.data)));
   });
 
   catalogRoutes.get('/providers', async (c) => {
-    return c.json(providersResponseSchema.parse(await catalog.listProviders()));
+    const key = 'providers';
+    const cached = listCache.get(key);
+    if (cached) return c.json(cached);
+    const body = await catalogInflight.run(key, async () => {
+      const parsed = providersResponseSchema.parse(await catalog.listProviders());
+      listCache.set(key, parsed);
+      return parsed;
+    });
+    return c.json(body);
   });
 
   catalogRoutes.get('/categories', async (c) => {
-    return c.json(categoriesResponseSchema.parse(await catalog.listCategories()));
+    const key = 'categories';
+    const cached = listCache.get(key);
+    if (cached) return c.json(cached);
+    const body = await catalogInflight.run(key, async () => {
+      const parsed = categoriesResponseSchema.parse(await catalog.listCategories());
+      listCache.set(key, parsed);
+      return parsed;
+    });
+    return c.json(body);
   });
 
   catalogRoutes.get('/lobby', async (c) => {
@@ -329,6 +392,7 @@ export function createApp(options: CreateAppOptions = {}) {
           providerConfigured: paymentsConfig.providerConfigured,
           testMode: paymentsConfig.testMode,
           testMaxAmount: paymentsConfig.testMaxAmount,
+          mockMode: paymentsConfig.mockMode,
         },
         { now },
       );
@@ -347,19 +411,34 @@ export function createApp(options: CreateAppOptions = {}) {
     webOrigin,
     now,
   });
-  const supportConfig = options.supportAi === undefined ? readSupportAiConfig(env) : null;
+  const limits = readAiChatLimits(env);
+  const liveOpenAi = options.supportAi === undefined ? readOpenAiLiveConfig(env) : null;
   const supportAi =
     options.supportAi !== undefined
       ? options.supportAi
-      : supportConfig
-        ? createSupportAiProvider(supportConfig, options.fetch ?? globalThis.fetch)
+      : liveOpenAi
+        ? createSupportAiProvider(liveOpenAi, options.fetch ?? globalThis.fetch)
         : null;
+  const modelEnabled =
+    options.supportAi !== undefined
+      ? env.AI_CHAT_ENABLED === 'true' && env.NODE_ENV !== 'production'
+      : liveOpenAi !== null;
+  const supportBudget =
+    options.supportBudget ??
+    (process.env.NODE_ENV === 'test'
+      ? createMemoryAiBudget(limits)
+      : createFileAiBudget(fileURLToPath(new URL('../data/ai-budget.json', import.meta.url)), limits));
   registerSupportRoutes(app, {
-    webOrigin,
+    ...sessionDependencies,
     ai: supportAi,
+    modelEnabled,
+    limits,
+    budget: supportBudget,
     channels: readSupportChannels(env),
     testDepositAvailable: paymentsConfig.testMode,
     secrets: supportSecretValues(env),
+    searchGames: (query) => searchSupportGames(catalog, query),
+    getAccount,
   });
 
   app.onError((_error, c) => {
@@ -465,4 +544,37 @@ export function createApp(options: CreateAppOptions = {}) {
   });
 
   return app;
+}
+
+async function searchSupportGames(catalog: CatalogUseCases, query: string): Promise<SupportCatalogGame[]> {
+  const parsed = gamesResponseSchema.parse(await catalog.listGames({ search: query, page: 1, perPage: 8 }));
+  return parsed.games
+    .flatMap((game) => {
+      if (!/^[1-9]\d{0,11}$/.test(game.id) || game.active === false) return [];
+      const title = game.title.replace(/\s+/g, ' ').trim().slice(0, 120);
+      const slug = game.slug.trim().slice(0, 200);
+      if (!title || !slug) return [];
+      return [
+        {
+          id: game.id,
+          slug,
+          title,
+          kind: game.kind,
+          imageUrl: httpsImage(game.imageUrl),
+          demoPlayEnabled: game.demoPlayEnabled,
+          active: true,
+        },
+      ];
+    })
+    .slice(0, 8);
+}
+
+function httpsImage(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }

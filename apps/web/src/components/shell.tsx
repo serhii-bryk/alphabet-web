@@ -2,16 +2,17 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  Gamepad2,
+  Dices,
   Heart,
-  House,
   Menu,
-  Percent,
+  Radio,
   Search,
+  TicketPercent,
   Trophy,
   UserRound,
   PanelLeftClose,
   PanelLeftOpen,
+  type LucideIcon,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
@@ -21,6 +22,7 @@ import { LocaleSwitcher } from './locale-switcher';
 import { ThemeSwitcher } from './theme-switcher';
 import { Wordmark } from './wordmark';
 import { CommandSearch, SearchTrigger } from './search';
+import { SectionScroll } from './section-scroll';
 import { ConnectionStatus } from './connection-status';
 import { GameLaunchProvider } from './game-launch/provider';
 import { SupportChatProvider, SupportMenuButton } from './support/support-chat';
@@ -33,20 +35,27 @@ import { SiteFooter } from './site-footer';
 import { RouteProgress } from './route-progress';
 
 const nav = [
-  { href: '/casino', labelKey: 'casino', icon: House },
-  { href: '/live-casino', labelKey: 'live', icon: Gamepad2 },
+  { href: '/casino', labelKey: 'casino', icon: Dices },
+  { href: '/live-casino', labelKey: 'live', icon: Radio },
   { href: '/favorites', labelKey: 'favorites', icon: Heart },
   { href: '/sports', labelKey: 'sports', icon: Trophy },
-  { href: '/promotions', labelKey: 'promotions', icon: Percent },
+  { href: '/promotions', labelKey: 'promotions', icon: TicketPercent },
   { href: '/search', labelKey: 'search', icon: Search },
 ] as const;
 const mobileNav = [
-  { href: '/casino', labelKey: 'casino', icon: House },
-  { href: '/live-casino', labelKey: 'live', icon: Gamepad2 },
+  { href: '/casino', labelKey: 'casino', icon: Dices },
+  { href: '/live-casino', labelKey: 'live', icon: Radio },
   { href: '/sports', labelKey: 'sports', icon: Trophy },
-  { href: '/promotions', labelKey: 'promotions', icon: Percent },
+  { href: '/promotions', labelKey: 'promotions', icon: TicketPercent },
   { href: '/account', labelKey: 'account', icon: UserRound },
 ] as const;
+function NavIcon({ icon: Icon }: { icon: LucideIcon }) {
+  return (
+    <span className="grid size-5 shrink-0 place-items-center">
+      <Icon size={18} aria-hidden />
+    </span>
+  );
+}
 function Navigation({
   onNavigate,
   compact = false,
@@ -70,7 +79,7 @@ function Navigation({
             aria-label={compact ? label : undefined}
             className="nav-item flex h-11 items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-semibold"
           >
-            <Icon size={19} />
+            <NavIcon icon={Icon} />
             {!compact && label}
           </Link>
         );
@@ -177,8 +186,9 @@ export function Shell({ children }: { children: ReactNode }) {
           >
             <ProductNav />
           </div>
-          {children}
-          {!sports && <SiteFooter />}
+          <div id="game-page-slot" />
+          <div className="route-content">{children}</div>
+          <SiteFooter />
         </main>
         <nav
           aria-label={navT('mobile')}
@@ -192,11 +202,12 @@ export function Shell({ children }: { children: ReactNode }) {
               className="bottom-nav-item flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold"
               style={{ color: path === href ? 'var(--accent)' : 'var(--muted)' }}
             >
-              <Icon size={19} />
+              <NavIcon icon={Icon} />
               <span className="truncate">{navT(labelKey)}</span>
             </Link>
           ))}
         </nav>
+        <SectionScroll />
         <CommandSearch />
         <ConnectionStatus />
       </div>
@@ -243,7 +254,7 @@ function Placeholder({
       title={shellT('itemPlaceholder', { label })}
       className="nav-item flex h-11 w-full items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-semibold"
     >
-      <Icon size={19} />
+      <NavIcon icon={Icon} />
       {!compact && label}
     </button>
   );

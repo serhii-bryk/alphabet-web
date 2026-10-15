@@ -14,6 +14,8 @@ const errorCodes: SupportChatErrorCode[] = [
   'ai_timeout',
   'ai_response_invalid',
   'support_unavailable',
+  'rate_limited',
+  'budget_exhausted',
 ];
 
 export class SupportRequestError extends Error {

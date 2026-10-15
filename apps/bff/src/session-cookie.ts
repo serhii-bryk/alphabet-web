@@ -10,7 +10,7 @@ const tagBytes = 16;
 const sessionPayloadSchema = z.object({
   accessToken: z.string().min(1),
   playerId: z.string().regex(/^[1-9]\d*$/),
-  email: z.string().min(1),
+  email: z.string().min(1).nullable(),
   currency: z.string().min(1).nullable(),
   expiresAt: z.iso.datetime(),
 });

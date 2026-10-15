@@ -22,7 +22,7 @@ export default defineConfig({
   retries: 0,
   reporter: 'list',
   use: {
-    baseURL: 'http://127.0.0.1:3100',
+    baseURL: 'http://localhost:3100',
     trace: 'retain-on-failure',
   },
   projects: [{ name: 'chromium', use: { ...desktopChrome } }],
@@ -34,8 +34,12 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
-      command: 'pnpm exec next dev --hostname 127.0.0.1 --port 3100',
-      url: 'http://127.0.0.1:3100/casino',
+      // Binding only 127.0.0.1 makes next-intl rewrite /casino to an absolute
+      // localhost URL, which redirects back and never returns 200. The browser
+      // must use the same host or Next blocks the dev scripts and the page
+      // never hydrates.
+      command: 'pnpm exec next dev --port 3100',
+      url: 'http://localhost:3100/casino',
       reuseExistingServer: false,
       timeout: 120_000,
       env: webEnv(),

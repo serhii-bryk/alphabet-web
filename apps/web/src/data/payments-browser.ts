@@ -125,7 +125,8 @@ function parseMethod(body: unknown): PaymentMethod | null {
     !isNullableNumber(body.minAmount) ||
     !isNullableNumber(body.maxAmount) ||
     !Array.isArray(body.fields) ||
-    typeof body.test !== 'boolean'
+    typeof body.test !== 'boolean' ||
+    typeof body.mock !== 'boolean'
   ) {
     return null;
   }
@@ -148,6 +149,7 @@ function parseMethod(body: unknown): PaymentMethod | null {
     maxAmount: body.maxAmount,
     fields,
     test: body.test,
+    mock: body.mock,
   };
 }
 

@@ -1,5 +1,6 @@
 import { createElement, type AnchorHTMLAttributes, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NextIntlClientProvider } from 'next-intl';
 import { describe, expect, it, vi } from 'vitest';
 import type { CatalogGame, CatalogLobbyResponse } from '@brand/contracts';
@@ -31,9 +32,11 @@ import { CatalogErrorState, catalogPageItems, LobbyLoading, LobbyView } from './
 
 function renderLobby(node: ReactNode) {
   return renderToStaticMarkup(
-    <NextIntlClientProvider locale="en" messages={messages}>
-      {node}
-    </NextIntlClientProvider>,
+    <QueryClientProvider client={new QueryClient()}>
+      <NextIntlClientProvider locale="en" messages={messages}>
+        {node}
+      </NextIntlClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -185,9 +188,7 @@ describe('catalog lobby UI', () => {
     expect(empty).not.toContain('href="/register"');
     expect(empty).not.toContain('Join now');
     expect(empty).toContain('>Register<');
-    expect(empty).toContain('aria-label="Google, Coming soon"');
-    expect(empty).toContain('aria-label="Apple, Coming soon"');
-    expect(empty).toContain('aria-label="Phone, Coming soon"');
+    expect(empty).not.toContain('Coming soon');
     expect(empty).toContain('href="/casino"');
     expect(empty).toContain('href="/sports"');
   });
@@ -252,8 +253,10 @@ describe('catalog lobby UI', () => {
     expect(html).toContain('id="games"');
     expect(html).toContain('href="#providers"');
     expect(html).toContain('id="providers"');
-    expect(html).toContain('href="#promotions"');
-    expect(html).toContain('id="promotions"');
+    expect(html).not.toContain('href="#promotions"');
+    expect(html).not.toContain('id="promotions"');
+    expect(html).not.toContain('Welcome on the floor');
+    expect(html).not.toContain('Weekend live rooms');
     expect(html).toContain('href="/live-casino#games"');
     expect(html).toContain('id="game-floor"');
     expect(html).toContain('id="live-discovery"');
@@ -267,14 +270,12 @@ describe('catalog lobby UI', () => {
     const gamesAt = html.indexOf('id="games"');
     const live = html.indexOf('id="live-discovery"');
     const providers = html.indexOf('id="providers"');
-    const promotions = html.indexOf('id="promotions"');
     const journal = html.indexOf('id="journal"');
     expect(worlds).toBeGreaterThan(-1);
     expect(worlds).toBeLessThan(gamesAt);
     expect(gamesAt).toBeLessThan(live);
     expect(live).toBeLessThan(providers);
-    expect(providers).toBeLessThan(promotions);
-    expect(promotions).toBeLessThan(journal);
+    expect(providers).toBeLessThan(journal);
 
     const worldMarkup = html.slice(worlds, html.indexOf('</section>', worlds));
     expect(worldMarkup).toContain('product-world-slots');
@@ -283,5 +284,7 @@ describe('catalog lobby UI', () => {
     expect(worldMarkup).not.toContain('Promotions');
     expect(worldMarkup).not.toContain('Providers');
     expect(worldMarkup.match(/product-world-cta/g)).toHaveLength(3);
+    expect(worldMarkup).toContain('href="#games"');
+    expect(worldMarkup).toContain('product-world-slots');
   });
 });

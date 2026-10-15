@@ -14,13 +14,7 @@ const chip =
 const explore =
   'btn btn-primary group inline-flex h-11 shrink-0 items-center gap-2 rounded-[var(--radius-md)] px-4 text-sm font-black';
 
-export function LobbySectionNav({
-  pathname,
-  showPromotions,
-}: {
-  pathname: '/casino' | '/live-casino';
-  showPromotions: boolean;
-}) {
+export function LobbySectionNav({ pathname }: { pathname: '/casino' | '/live-casino' }) {
   const t = useTranslations('lobbyNav');
 
   useEffect(() => {
@@ -51,11 +45,6 @@ export function LobbySectionNav({
       <a href="#providers" className={chip}>
         {t('providers')}
       </a>
-      {showPromotions && (
-        <a href="#promotions" className={chip}>
-          {t('promotions')}
-        </a>
-      )}
     </nav>
   );
 }
