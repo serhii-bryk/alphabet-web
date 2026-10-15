@@ -1,33 +1,30 @@
 ---
 name: orchestrator
-description: Plans features, delegates implementation and independent verification, and iterates until no blockers remain.
+description: Implements a feature in Fast Development Mode 2.0 with one agent and file-scoped checks.
 ---
 
-Coordinate every feature from requirement through independent verification, using Fast Development Mode.
+Coordinate a feature in Fast Development Mode 2.0. The primary agent does the work. Do not delegate it.
 
-1. Understand the requirement; inspect relevant code and architecture.
-2. Use the minimum number of agents. Prefer one implementation agent when one can reasonably complete the task; split into `bff-developer` and `frontend-developer` only when the work is genuinely separable.
-3. Continue from the current repository state. Before implementation, inspect the active branch, working tree, and existing branch names. Never restart completed work, and never overwrite, discard, stage, or commit unrelated changes.
-4. During implementation, run only targeted tests for the code being changed. Do not run the full workspace suite, `code-reviewer`, or `product-ux-reviewer` after each change. Do not commit during implementation.
-5. When the milestone is implementation-complete, run ONE final verification cycle: full typecheck, lint, relevant unit tests, Playwright where relevant, then `test-engineer`, then `code-reviewer`. Run `product-ux-reviewer` only if user-facing UI changed materially.
-6. Never accept a developer's completion claim without independent evidence.
-7. After that verification passes, prepare the Git handoff in `.cursor/rules/git-handoff.mdc` and wait for approval of the specific action. Do not add agents or review stages for the handoff.
+1. Read the requirement and the code it touches. Open a contract or reference only when that behavior is not already in this repo.
+2. Stay one agent. Split into `bff-developer` and `frontend-developer` only when the user asked or the surfaces cannot share one context. Do not run `test-engineer`, `code-reviewer`, or `product-ux-reviewer` as a default pass.
+3. Continue from the current repository state. Before editing, inspect the active branch, working tree, and existing branch names. Never restart completed work, and never overwrite, discard, stage, stash, or commit unrelated changes.
+4. During implementation, run `pnpm --filter <pkg> test -- <file>.test.ts` for the files that cover the change. Do not run root `pnpm test`. A package `test` with no path runs that package's entire Vitest suite. Do not commit during implementation.
+5. When the change is done, typecheck and lint the affected packages once, and run a Playwright spec only if that flow changed. Auth, session, payments, security, and responsible gaming keep the changed use case, route, and browser caller in that run. Do not schedule a second review cycle that repeats those commands.
+6. After that check, prepare the Git handoff in `.cursor/rules/git-handoff.mdc` and wait for approval of the specific action. Do not add agents or review stages for the handoff.
 
 ## Execution feedback
 
-After the checks the task already requires, add a few lines to the final report. This is not another agent, review cycle, or log.
+Add a few lines only when a command failed, a retry changed the result, or the same stall recurred. This is not another agent or log review.
 
-- Use the evidence already produced: failed commands, test results, retries, tool errors, and significant corrections.
-- Name concrete issues that affected reliability, speed, or correctness. Fix a blocking problem when it is still inside the task scope.
-- Suggest a workflow improvement only when that evidence supports it, especially when the same issue recurs. Do not invent one to fill the report, and do not rewrite these instructions after every task.
-- Skip a full execution-log review for a trivial task.
+- Use the output already produced. Fix a blocker that is still inside the task.
+- Suggest a workflow change only when that evidence supports it. Do not rewrite these instructions after every task.
 - Never include secrets, credentials, or sensitive user data.
 
 A complex or high-risk milestone may use deeper tracing and the existing independent review when that extra depth is justified. Do not add an observability service, logging framework, or extra orchestration.
 
 ## Fix loop
 
-For a failing targeted test: the responsible developer inspects the failure, applies the smallest fix, and reruns only the affected test. Do not restart the agent workflow. For a final-verification Blocker: fix it, rerun the affected checks, and only rerun reviews whose findings are affected.
+For a failing test: fix it and rerun that file. Do not restart the workflow or rerun suites that already passed.
 
 ## Time and loop protection
 
@@ -43,9 +40,8 @@ Never invent Platform behavior, bypass failures, hide limitations, change unrela
 
 ## Definition of Done
 
-- Implementation, typecheck, lint, and relevant tests pass in the final verification cycle.
-- User-visible flows are verified where applicable.
-- Final test, technical, and applicable UX reviews have no Blocker.
+- Affected typecheck, lint, and the named tests passed once.
+- User-visible flows were exercised where the change is visible.
 - Architecture boundaries remain intact and limitations are documented.
 
-Final reports include implemented scope, agents used, checks run, review results, known limitations, a few lines of execution feedback, unresolved human decisions, and the Git handoff proposal or the branch and short SHA after a successful commit.
+The report is short: what shipped, commands with pass/fail counts, blockers, and the Git handoff or the branch and short SHA after a commit. Include agents or retries only when they actually happened.

@@ -4,7 +4,7 @@ Source of truth for the current product. Read this before reconstructing history
 
 Update this file at the end of every completed milestone, and whenever an important architecture or integration decision changes. Record names and decisions only. Never store secrets, passwords, API keys, tokens, HMAC material, or personal test-account credentials.
 
-Last updated: 2026-10-15 (Responsible gaming, chat, search, payments, and Telegram).
+Last updated: 2026-10-15 (Fast Development Mode 2.0).
 
 ## Product goal
 
@@ -27,13 +27,14 @@ Local run from `new-brand-test`: `pnpm dev` starts web on port 3000 and BFF on p
 
 ## AI / Cursor workflow
 
-Fast Development Mode, coordinated by `.cursor/agents/orchestrator.md`.
+Fast Development Mode 2.0. One primary agent implements the task. `.cursor/agents/orchestrator.md` does not delegate by default.
 
-- One implementation agent when the work is not separable. Split into `bff-developer` and `frontend-developer` only when it is.
-- During implementation: targeted tests only. No full suite and no reviewers after every edit.
-- When a milestone is implementation-complete: typecheck, lint, relevant Vitest, Playwright where the UI changed, then independent test review and code review. UX review only if the user-visible UI changed materially.
-- After that verification, the orchestrator prepares the Git handoff in `.cursor/rules/git-handoff.mdc` and waits for approval. It does not commit on `main`, `master`, or `develop`, and does not push, unless explicitly authorized.
-- After those checks, the final report adds a few lines of execution feedback from evidence already produced: failed commands, test results, retries, tool errors, and significant corrections. Fix an in-scope blocker. Suggest a workflow change only when that evidence supports it, especially if it recurs. Do not rewrite these instructions after every task, skip a full log review for a trivial task, and never include secrets or sensitive data. A complex or high-risk milestone may use deeper tracing and the existing independent review when justified.
+- Read the code the change touches. Open a contract only when the behavior is not already in this repo.
+- Tests are file paths: `pnpm --filter @brand/domain test -- src/auth.test.ts`. No path runs every test file in that package. Root `pnpm test` is `turbo test` with `dependsOn: ["^test"]`, so it runs every suite and each dependency suite first. Do not use it for a feature.
+- Auth, session, payments, security, and responsible gaming still get the changed use case, BFF route, and browser caller run once.
+- When the change is done: typecheck and lint the affected packages, and Playwright only for a spec that changed. No second reviewer pass.
+- The Git handoff is `.cursor/rules/git-handoff.mdc`. Do not commit on `main`, `master`, or `develop`, and do not push, unless explicitly authorized.
+- The report is what shipped, the commands and counts, blockers, and the handoff. Mention a retry only when it changed the result.
 - Stop for human approval before architecture, Platform contracts, auth/security, database schema, payments, major dependencies, deployment, or product tradeoffs.
 - CI mocks Platform and never calls stage.
 
@@ -164,7 +165,8 @@ Web:
 
 - Vitest for domain, platform, BFF, and browser-contract tests. Platform `fetch` is faked.
 - Playwright in `apps/web/e2e` for registration, auth, Telegram sign-in, and demo launch, against a fixture BFF. Telegram tests mock the widget script and never call Telegram or Platform.
-- Commands from `new-brand-test`: `pnpm test`, `pnpm typecheck`, `pnpm lint`, and `pnpm --filter @brand/web test:e2e`.
+- Feature checks name files: `pnpm --filter <pkg> test -- src/<file>.test.ts`, then typecheck and lint for the packages that changed. `pnpm --filter @brand/web exec playwright test e2e/<spec>.spec.ts` for one browser flow.
+- `pnpm test`, `pnpm typecheck`, and `pnpm lint` from the repo root go through Turbo. `test` depends on `^test`, so `pnpm test` is the full suite, not the feature command. `pnpm --filter @brand/web test:e2e` runs every Playwright spec.
 - One manual stage registration with `SESSION_SECRET` set created an account and an authenticated session without email verification. That call is not part of CI.
 
 ## Important architecture and security decisions
