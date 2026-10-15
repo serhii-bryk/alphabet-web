@@ -111,7 +111,7 @@ describe('signed-in sidebar and menu', () => {
     await settle();
 
     expect(aside().querySelector('a[href="/responsible-gaming"]')).toBeNull();
-    expect(aside().querySelector('button[title="Account placeholder"]')).toBeNull();
+    expect(aside().querySelector('a[href="/account"]')).toBeNull();
     expect(aside().querySelector('a[href="/casino"]')).not.toBeNull();
     expect(mobileNav().querySelector('a[href="/account"]')).toBeNull();
     expect(mobileNav().querySelector('a[href="/casino"]')).not.toBeNull();
@@ -124,7 +124,7 @@ describe('signed-in sidebar and menu', () => {
     });
     const dialog = document.querySelector('[role="dialog"]');
     expect(dialog?.querySelector('a[href="/responsible-gaming"]')).toBeNull();
-    expect(dialog?.querySelector('button[title="Account placeholder"]')).toBeNull();
+    expect(dialog?.querySelector('a[href="/account"]')).toBeNull();
     expect(dialog?.querySelector('a[href="/casino"]')).not.toBeNull();
 
     await act(async () => {
@@ -133,10 +133,10 @@ describe('signed-in sidebar and menu', () => {
     await settle();
 
     expect(aside().querySelector('a[href="/responsible-gaming"]')?.textContent).toContain('Play safe');
-    expect(aside().querySelector('button[title="Account placeholder"]')?.textContent).toContain('Account');
+    expect(aside().querySelector('a[href="/account"]')?.textContent).toContain('Account');
     expect(mobileNav().querySelector('a[href="/account"]')?.textContent).toContain('Account');
     expect(dialog?.querySelector('a[href="/responsible-gaming"]')?.textContent).toContain('Play safe');
-    expect(dialog?.querySelector('button[title="Account placeholder"]')).not.toBeNull();
+    expect([...(dialog?.querySelectorAll('a[href="/account"]') ?? [])].some((link) => link.textContent?.includes('Account'))).toBe(true);
 
     await act(async () => {
       client.setQueryData(sessionKey, guest);
@@ -144,10 +144,10 @@ describe('signed-in sidebar and menu', () => {
     await settle();
 
     expect(aside().querySelector('a[href="/responsible-gaming"]')).toBeNull();
-    expect(aside().querySelector('button[title="Account placeholder"]')).toBeNull();
+    expect(aside().querySelector('a[href="/account"]')).toBeNull();
     expect(mobileNav().querySelector('a[href="/account"]')).toBeNull();
     expect(dialog?.querySelector('a[href="/responsible-gaming"]')).toBeNull();
-    expect(dialog?.querySelector('button[title="Account placeholder"]')).toBeNull();
+    expect(dialog?.querySelector('a[href="/account"]')).toBeNull();
     expect(document.querySelector('footer a[href="/responsible-gaming"]')).not.toBeNull();
     expect(aside().querySelector('a[href="/casino"]')).not.toBeNull();
   });
