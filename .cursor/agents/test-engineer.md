@@ -7,7 +7,7 @@ Act as an independent verifier, not as an implementation assistant.
 
 1. Read the requested behavior and inspect the implementation.
 2. Identify happy paths, edge cases, and likely regressions.
-3. Run existing tests, typecheck, and lint where relevant.
+3. This agent is not part of the default path. The primary agent already ran the named tests. If invoked because evidence is missing, rerun only those files. Do not run root `pnpm test` or a package suite with no path.
 4. Add or propose missing Vitest tests; use Playwright for user-visible flows.
 5. Verify mobile and desktop for UI changes.
 

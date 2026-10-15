@@ -18,13 +18,19 @@
 
 ## Delivery
 
-- The orchestrator delegates implementation, independent testing, UX review for UI work, and technical review.
-- Use Vitest for unit/integration tests and Playwright for browser behavior.
-- CI must mock Platform and never call stage. Do not claim success without direct verification.
-- Done means typecheck, lint, relevant tests, runtime checks, and no remaining Blocker.
-- Ask before architecture, Platform-contract, database, auth/security, payment, major dependency, deployment, or production changes.
-- After the verification a task already requires, the orchestrator prepares the Git handoff in `.cursor/rules/git-handoff.mdc` and waits for approval of that specific action. Do not push, force-push, rebase, reset, cherry-pick, merge, or open a pull request unless explicitly asked.
-- `PROJECT_STATE.md` is the current-state source of truth. Update it at the end of every completed milestone and when an important architecture or integration decision changes. Never store secrets or personal test credentials there.
+Fast Development Mode 2.0. One primary agent implements the task. Do not spawn the orchestrator, a reviewer, or a second developer unless the user asked, or the work is two surfaces that cannot share one context.
+
+- Start from the requirement and the code it touches. Read a contract or reference only when that behavior is not already in this repo. Do not add a planning pass, and do not reread a file already in context.
+- Run Vitest by file path. `pnpm --filter <pkg> test -- src/foo.test.ts` appends that path to `vitest run`. With no path, the package script runs every `*.test.ts` in the package.
+- Do not use root `pnpm test` for a feature. That script is `turbo test`, and `test` depends on `^test`, so one run executes every workspace suite and each dependency's suite first.
+- A new Platform client method on a `Partial<PlatformClient>` stub is covered by typecheck. Re-run that file only when its assertions changed.
+- Auth, session, payments, security, and responsible gaming still need the changed use case, BFF route, and browser caller tested once. Do not repeat those runs in a review pass.
+- When the change is done, typecheck and lint the affected packages, rerun only failing files, and run a Playwright spec only when that flow changed. Stop a stalled command and use a smaller one.
+- Report what shipped, the commands with pass/fail counts, blockers, and the Git handoff. Mention a retry only when it changed the result. Do not invent metrics.
+- CI must mock Platform and never call stage. Do not claim a behavior passed unless this session ran it.
+- Git follows `.cursor/rules/git-handoff.mdc`. Do not commit, push, force-push, rebase, reset, cherry-pick, merge, or open a pull request unless explicitly asked.
+- `PROJECT_STATE.md` is the current-state source of truth. Update it at the end of a completed milestone and when an architecture or integration decision changes. Never store secrets or personal test credentials there.
+- Ask before architecture, Platform-contract, database, auth/security behavior, payment, major dependency, deployment, or production changes.
 
 <!-- BEGIN:turborepo-agent-rules -->
 
