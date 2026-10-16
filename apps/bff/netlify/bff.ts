@@ -26,7 +26,8 @@ export function demoEnvironment(source: NodeJS.ProcessEnv): Record<string, strin
   delete env.OPENAI_API_KEY;
   env.AI_CHAT_ENABLED = 'false';
   env.PAYMENTS_TEST_MODE = 'false';
-  env.PAYMENTS_MOCK_MODE = 'false';
+  env.PAYMENTS_MOCK_MODE = 'true';
+  env.PAYMENTS_MOCK_ALLOW_PRODUCTION = 'true';
   if (!env.WEB_ORIGIN) {
     const site = siteOrigin(env.DEPLOY_PRIME_URL) ?? siteOrigin(env.URL);
     if (site) env.WEB_ORIGIN = site;

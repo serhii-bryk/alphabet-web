@@ -161,8 +161,11 @@ export function isTestDepositEnabled(
 export function isMockPaymentsEnabled(
   flag: string | undefined,
   nodeEnv: string | undefined,
+  allowProduction = false,
 ): boolean {
-  return flag === 'true' && nodeEnv !== 'production';
+  if (flag !== 'true') return false;
+  if (nodeEnv === 'production') return allowProduction;
+  return true;
 }
 
 export function parsePaymentAmount(amount: number): number | undefined {

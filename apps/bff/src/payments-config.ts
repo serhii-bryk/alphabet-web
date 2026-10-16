@@ -34,7 +34,11 @@ export function readPaymentsConfig(env: Record<string, string | undefined>): Pay
     webOrigin: readOrigin(env.WEB_ORIGIN) ?? 'http://localhost:3000',
     testMode: isTestDepositEnabled(env.PAYMENTS_TEST_MODE, nodeEnv),
     testMaxAmount: resolveTestMaxAmount(env.PAYMENTS_TEST_MAX_AMOUNT),
-    mockMode: isMockPaymentsEnabled(env.PAYMENTS_MOCK_MODE, nodeEnv),
+    mockMode: isMockPaymentsEnabled(
+      env.PAYMENTS_MOCK_MODE,
+      nodeEnv,
+      env.PAYMENTS_MOCK_ALLOW_PRODUCTION === 'true',
+    ),
     providerConfigured: Boolean(finalpayUrl && finalpaySecret && callbackBaseUrl) && !liveBlocked,
   };
 }

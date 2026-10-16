@@ -10,10 +10,12 @@ publish = "apps/web/.next"
 [build.environment]
 NODE_VERSION = "22"
 PNPM_FLAGS = "--shamefully-hoist"
-# Demo guards. The function clears the same switches again at runtime.
+# Demo guards. The function sets the same switches again at runtime.
+# Mock Card and Bank transfer are pending only. Test deposit stays off.
 AI_CHAT_ENABLED = "false"
 PAYMENTS_TEST_MODE = "false"
-PAYMENTS_MOCK_MODE = "false"
+PAYMENTS_MOCK_MODE = "true"
+PAYMENTS_MOCK_ALLOW_PRODUCTION = "true"
 
 # Explicit runtime. Automatic detection published this site without an SSR handler.
 [[plugins]]
