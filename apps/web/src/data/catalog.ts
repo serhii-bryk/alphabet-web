@@ -80,19 +80,123 @@ function siteOrigin(value: string | undefined): string | undefined {
   }
 }
 
+const CATALOG_ENV_NAMES = [
+  'NETLIFY',
+  'URL',
+  'DEPLOY_PRIME_URL',
+  'DEPLOY_URL',
+  'SITE_ID',
+  'SITE_NAME',
+  'BFF_INTERNAL_URL',
+] as const;
+
+function catalogEnvPresence(env: Record<string, string | undefined>): string[] {
+  return CATALOG_ENV_NAMES.filter((name) => Boolean(env[name]?.trim()));
+}
+
+function sanitizeDiagnosticMessage(message: string): string {
+  return message
+    .replace(/[\r\n]/g, ' ')
+    .replace(/bearer\s+\S+/gi, 'bearer [redacted]')
+    .replace(/\b(token|secret|password|signature|api[-_]?key|authorization|cookie)\b\s*[:=]\s*\S+/gi, '$1=[redacted]')
+    .slice(0, 180);
+}
+
+function fetchErrorFacts(error: unknown): { name: string; code: string | null; message: string } {
+  const current = error instanceof Error ? error : null;
+  const cause = current?.cause instanceof Error ? current.cause : null;
+  const codeOf = (value: Error | null) =>
+    value && 'code' in value && typeof value.code === 'string' ? value.code : null;
+  return {
+    name: cause?.name ?? current?.name ?? 'unknown',
+    code: codeOf(cause) ?? codeOf(current),
+    message: sanitizeDiagnosticMessage(cause?.message ?? current?.message ?? 'unknown'),
+  };
+}
+
+async function bffErrorCode(response: Response): Promise<string | null> {
+  const type = response.headers.get('content-type') ?? '';
+  if (!type.includes('json')) return null;
+  try {
+    const text = await response.clone().text();
+    if (text.length > 500) return null;
+    const parsed = JSON.parse(text) as { error?: { code?: unknown } };
+    const code = parsed.error?.code;
+    return typeof code === 'string' && /^[a-z0-9_]{1,40}$/.test(code) ? code : null;
+  } catch {
+    return null;
+  }
+}
+
+function logCatalogLobby(
+  env: Record<string, string | undefined>,
+  entry: Record<string, unknown>,
+): void {
+  // Temporary production diagnosis. Names and the resolved catalog URL only.
+  console.error(
+    `[catalog-ssr] ${JSON.stringify({
+      netlifyFlag: env.NETLIFY === 'true',
+      envPresent: catalogEnvPresence(env),
+      cache: 'no-store',
+      ...entry,
+    })}`,
+  );
+}
+
 async function requestCatalog<T>(path: string, filters: CatalogGameFilters): Promise<T> {
-  const baseUrl = resolveBffBaseUrl();
+  const env = process.env;
+  const baseUrl = resolveBffBaseUrl(env);
   const query = toCatalogQuery(filters);
+  const url = `${baseUrl}${path}${query ? `?${query}` : ''}`;
+  const started = Date.now();
+  const lobby = path === '/catalog/lobby';
 
   try {
-    const response = await fetch(`${baseUrl}${path}${query ? `?${query}` : ''}`, {
+    const response = await fetch(url, {
       cache: 'no-store',
       headers: { accept: 'application/json' },
     });
-    if (!response.ok) throw new CatalogUnavailableError();
-    return (await response.json()) as T;
+    const durationMs = Date.now() - started;
+    if (!response.ok) {
+      if (lobby) {
+        logCatalogLobby(env, {
+          url,
+          status: response.status,
+          durationMs,
+          contentType: response.headers.get('content-type'),
+          errorCode: await bffErrorCode(response),
+        });
+      }
+      throw new CatalogUnavailableError();
+    }
+    try {
+      const body = (await response.json()) as T;
+      if (lobby) {
+        logCatalogLobby(env, { url, status: response.status, durationMs });
+      }
+      return body;
+    } catch (error) {
+      if (lobby) {
+        logCatalogLobby(env, {
+          url,
+          status: response.status,
+          durationMs,
+          contentType: response.headers.get('content-type'),
+          error: fetchErrorFacts(error),
+        });
+      }
+      throw new CatalogUnavailableError();
+    }
   } catch (error) {
     if (error instanceof CatalogUnavailableError) throw error;
+    if (lobby) {
+      logCatalogLobby(env, {
+        url,
+        status: null,
+        durationMs: Date.now() - started,
+        error: fetchErrorFacts(error),
+      });
+    }
     throw new CatalogUnavailableError();
   }
 }

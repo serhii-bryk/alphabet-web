@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  CatalogUnavailableError,
   getCatalogLobby,
   getCategoryFilterValue,
   parseCatalogFilters,
@@ -127,6 +128,65 @@ describe('catalog data access', () => {
       'https://alphabet.netlify.app/api/catalog/lobby?type=slots',
       expect.objectContaining({ cache: 'no-store' }),
     );
+  });
+
+  it('logs a failed lobby fetch without secrets or the response body', async () => {
+    vi.stubEnv('NETLIFY', '');
+    vi.stubEnv('DEPLOY_PRIME_URL', '');
+    vi.stubEnv('URL', 'https://alphabet.netlify.app');
+    vi.stubEnv('SITE_ID', 'site-secret-should-not-log');
+    vi.stubEnv('BFF_INTERNAL_URL', 'http://localhost:4000');
+    const failure = new TypeError('fetch failed');
+    failure.cause = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:4000 bearer super-secret-token'), {
+      code: 'ECONNREFUSED',
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      throw failure;
+    }));
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      await expect(getCatalogLobby('slots')).rejects.toBeInstanceOf(CatalogUnavailableError);
+
+      const line = spy.mock.calls.map((call) => String(call[0])).find((entry) => entry.includes('[catalog-ssr]'));
+      expect(line).toContain('https://alphabet.netlify.app/api/catalog/lobby?type=slots');
+      expect(line).toContain('"cache":"no-store"');
+      expect(line).toContain('"status":null');
+      expect(line).toContain('ECONNREFUSED');
+      expect(line).toContain('SITE_ID');
+      expect(line).not.toContain('site-secret-should-not-log');
+      expect(line).not.toContain('super-secret-token');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('logs a lobby HTTP status and error code without the response body', async () => {
+    vi.stubEnv('NETLIFY', 'true');
+    vi.stubEnv('URL', 'https://alphabet.netlify.app');
+    vi.stubEnv('DEPLOY_PRIME_URL', '');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(JSON.stringify({ error: { code: 'catalog_unavailable', message: 'secret-body' } }), {
+          status: 502,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      await expect(getCatalogLobby('slots')).rejects.toBeInstanceOf(CatalogUnavailableError);
+
+      const line = spy.mock.calls.map((call) => String(call[0])).find((entry) => entry.includes('[catalog-ssr]'));
+      expect(line).toContain('"status":502');
+      expect(line).toContain('"errorCode":"catalog_unavailable"');
+      expect(line).toContain('"netlifyFlag":true');
+      expect(line).not.toContain('secret-body');
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('keeps the local BFF when URL is set without Netlify runtime markers', () => {
