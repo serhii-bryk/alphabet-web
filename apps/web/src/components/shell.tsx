@@ -116,7 +116,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <IconButton label={shellT('openMenu')} className="mobile-only shrink-0" onClick={() => setDrawer(true)}>
             <Menu size={20} />
           </IconButton>
-          <Link href="/casino" className="flex min-w-0 shrink items-center text-lg font-black tracking-tight">
+          <Link href="/casino" className="flex min-w-0 shrink-0 items-center text-lg font-black tracking-tight min-[1100px]:shrink">
             <Wordmark compact />
           </Link>
           <div className="desktop-only ms-3 shrink-0">

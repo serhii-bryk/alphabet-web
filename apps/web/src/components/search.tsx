@@ -651,7 +651,7 @@ export function SearchTrigger({
       onClick={(event) =>
         dispatchEvent(new CustomEvent('open-command-search', { detail: { opener: event.currentTarget } }))
       }
-      className={`pressable h-10 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface-2)] text-sm text-[var(--muted)] hover:border-[var(--accent-line)] hover:bg-[var(--surface)] hover:text-[var(--text)] ${iconOnly ? `grid ${compact ? 'size-9' : 'size-10'} place-items-center` : 'flex min-w-56 px-3'} ${className}`}
+      className={`pressable items-center gap-2 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface-2)] text-sm text-[var(--muted)] hover:border-[var(--accent-line)] hover:bg-[var(--surface)] hover:text-[var(--text)] ${iconOnly ? `grid ${compact ? 'size-9' : 'size-10'} place-items-center` : 'flex h-10 min-w-56 px-3'} ${className}`}
     >
       <SearchIcon size={17} />
       {!iconOnly && (

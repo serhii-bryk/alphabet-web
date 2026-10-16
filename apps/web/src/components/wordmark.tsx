@@ -10,7 +10,7 @@ export function Wordmark({ compact = false }: { compact?: boolean }) {
       />
       <span
         aria-hidden
-        className={`${compact ? 'hidden min-[400px]:inline' : 'inline'} text-lg font-black tracking-tight text-[var(--text)]`}
+        className={`${compact ? 'hidden min-[1100px]:inline' : 'inline'} text-lg font-black tracking-tight text-[var(--text)]`}
       >
         Alpha<span className="text-[var(--accent)]">Bet</span>
       </span>

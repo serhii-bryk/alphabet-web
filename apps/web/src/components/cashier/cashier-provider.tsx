@@ -137,7 +137,7 @@ export function DepositButton({
     return (
       <Button
         type="button"
-        className={`fade-enter shrink-0 ${dense ? 'h-9 px-2.5 text-xs' : ''}`}
+        className={`fade-enter shrink-0 ${dense ? '!h-9 !px-2.5 !text-xs' : ''}`}
         onClick={open}
       >
         <WalletCards aria-hidden size={dense ? 14 : 16} className={dense ? 'max-[380px]:hidden' : undefined} />

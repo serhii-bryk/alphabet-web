@@ -11,6 +11,8 @@ import { useBalance, useLogout, useSession } from './session';
 
 const registerClass =
   'btn btn-primary inline-flex h-11 min-h-11 items-center justify-center rounded-[var(--radius-md)] font-semibold';
+const mobileAuthClass =
+  'btn inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-[var(--radius-md)] border px-3 text-sm font-semibold';
 
 export function formatBalance({ balance, currency }: PlayerBalance, locale: string) {
   try {
@@ -52,7 +54,9 @@ export function BalanceChip({ compact = false }: { compact?: boolean }) {
       className={`motion-enter inline-flex min-w-0 items-center rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] font-bold tabular-nums shadow-[inset_0_1px_0_rgb(255_255_255/.06)] ${compact ? 'h-9 max-w-[6.75rem] px-2 text-xs' : 'h-10 px-3 text-sm'}`}
     >
       <span className="sr-only">{t('balance')}</span>
-      <span className="truncate">{amount}</span>
+      <span dir="ltr" className="truncate">
+        {amount}
+      </span>
     </span>
   );
 }
@@ -130,30 +134,38 @@ export function HeaderAuth() {
 
 export function MobileHeaderCluster() {
   const { status, session } = useSession();
-  const { openRegistration } = useAuthDialog();
+  const { openLogin, openRegistration } = useAuthDialog();
   const t = useTranslations('shell');
   const account = useTranslations('nav');
   if (status === 'pending') return <AuthSkeleton className="w-[72px]" />;
   if (!session) {
     return (
-      <>
-        <SearchTrigger iconOnly />
+      <div className="flex items-center gap-1.5">
+        <SearchTrigger iconOnly compact className="shrink-0" />
         <button
           type="button"
-          className={`${registerClass} px-3`}
+          className={`${mobileAuthClass} btn-secondary border-[var(--line)] hover:border-[var(--accent-line)]`}
+          aria-haspopup="dialog"
+          onClick={(event) => openLogin(event.currentTarget)}
+        >
+          {t('login')}
+        </button>
+        <button
+          type="button"
+          className={`${mobileAuthClass} btn-primary border-transparent`}
           aria-haspopup="dialog"
           onClick={(event) => openRegistration(event.currentTarget)}
         >
           {t('register')}
         </button>
-      </>
+      </div>
     );
   }
   return (
     <div className="flex min-w-0 items-center gap-1">
       <BalanceChip compact />
       <DepositButton appearance="header" dense />
-      <SearchTrigger iconOnly compact />
+      <SearchTrigger iconOnly compact className="shrink-0" />
       <Link
         href="/account"
         aria-label={account('account')}

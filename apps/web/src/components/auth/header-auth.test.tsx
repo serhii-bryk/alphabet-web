@@ -52,11 +52,16 @@ function markup() {
 }
 
 describe('mobile header', () => {
-  it('keeps guests on search and register', () => {
+  it('shows guests search, login, and register in one row', () => {
     session.status = 'guest';
     const html = markup();
-    expect(html).toContain('Open search');
-    expect(html).toContain('>Register<');
+    const search = html.indexOf('Open search');
+    const login = html.indexOf('>Login<');
+    const register = html.indexOf('>Register<');
+    expect(search).toBeGreaterThan(-1);
+    expect(login).toBeGreaterThan(search);
+    expect(register).toBeGreaterThan(login);
+    expect(html).toMatch(/^<div class="flex items-center gap-1\.5">/);
     expect(html).not.toContain('Deposit');
     expect(html).not.toContain('Logout');
     expect(html).not.toContain('href="/account"');
