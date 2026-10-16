@@ -26,6 +26,7 @@ Fast Development Mode 2.0. One primary agent implements the task. Do not spawn t
 - A new Platform client method on a `Partial<PlatformClient>` stub is covered by typecheck. Re-run that file only when its assertions changed.
 - Auth, session, payments, security, and responsible gaming still need the changed use case, BFF route, and browser caller tested once. Do not repeat those runs in a review pass.
 - When the change is done, typecheck and lint the affected packages, rerun only failing files, and run a Playwright spec only when that flow changed. Stop a stalled command and use a smaller one.
+- Browser QA for login, casino game search, or casino navigation starts at `qa/README.md` and reuses `qa/procedures/` before exploring the browser again. Update only the procedure that is wrong. Do not store credentials or session data there.
 - Report what shipped, the commands with pass/fail counts, blockers, and the Git handoff. Mention a retry only when it changed the result. Do not invent metrics.
 - CI must mock Platform and never call stage. Do not claim a behavior passed unless this session ran it.
 - Git follows `.cursor/rules/git-handoff.mdc`. Do not commit, push, force-push, rebase, reset, cherry-pick, merge, or open a pull request unless explicitly asked.
