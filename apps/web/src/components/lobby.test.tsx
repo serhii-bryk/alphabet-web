@@ -17,6 +17,7 @@ vi.mock('@/i18n/navigation', () => ({
     ...props
   }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children: ReactNode }) =>
     createElement('a', { href, ...props }, children),
+  usePathname: () => '/casino',
 }));
 
 vi.mock('@/components/auth/session', async (importOriginal) => {
@@ -187,7 +188,8 @@ describe('catalog lobby UI', () => {
     expect(empty).not.toContain('Catalog pagination');
     expect(empty).not.toContain('href="/register"');
     expect(empty).not.toContain('Join now');
-    expect(empty).toContain('>Register<');
+    expect(empty).toContain('>Continue<');
+    expect(empty).not.toContain('>Register<');
     expect(empty).not.toContain('Coming soon');
     expect(empty).toContain('href="/casino"');
     expect(empty).toContain('href="/sports"');

@@ -1,4 +1,5 @@
 import type { AuthSession } from '@brand/contracts';
+import { getCountryCallingCode, type CountryCode } from 'libphonenumber-js/min';
 import type { LoginErrorCode } from './auth-browser';
 import { parseAuthSession } from './auth-browser';
 import { hasErrorCode, isAbortError, isRecord, readJson } from './browser-json';
@@ -14,6 +15,7 @@ export interface OnboardingFormState {
   prefill: Record<string, string>;
   expiresAt: string;
   next: string;
+  method?: string;
 }
 
 export type ExternalFinishResult =
@@ -63,6 +65,18 @@ const shownFields = [
   'username',
 ] as const;
 
+const googlePhoneFields = ['phone_prefix', 'phone'] as const;
+
+/** Platform accepts phone as optional player data. Google onboarding asks for it here. */
+export function withGooglePhone(method: string | undefined, requiredFields: readonly string[]): string[] {
+  if (method !== 'google') return [...requiredFields];
+  const next = [...requiredFields];
+  for (const field of googlePhoneFields) {
+    if (!next.includes(field)) next.push(field);
+  }
+  return next;
+}
+
 export function externalFieldOrder(requiredFields: readonly string[], prefill: Record<string, string>): string[] {
   const shown = new Set([...requiredFields, ...Object.keys(prefill)]);
   const ordered: string[] = shownFields.filter((field) => shown.has(field));
@@ -85,7 +99,7 @@ export function validateOnboardingValues(
       if (required.has(field)) errors[field] = emptyMessage(field);
       continue;
     }
-    const invalid = invalidMessage(field, value);
+    const invalid = invalidMessage(field, value, values);
     if (invalid) errors[field] = invalid;
   }
   return errors;
@@ -232,6 +246,7 @@ function parseOnboarding(body: unknown): OnboardingFormState | null {
     prefill,
     expiresAt: body.expiresAt,
     next: readNext(body.next),
+    ...(typeof body.method === 'string' && /^[a-z0-9_-]{1,64}$/.test(body.method) ? { method: body.method } : {}),
   };
 }
 
@@ -291,7 +306,7 @@ function emptyMessage(field: string): string {
   }
 }
 
-function invalidMessage(field: string, value: string): string | undefined {
+function invalidMessage(field: string, value: string, values: Record<string, string>): string | undefined {
   switch (field) {
     case 'email':
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? undefined : 'Enter a valid email address.';
@@ -308,9 +323,22 @@ function invalidMessage(field: string, value: string): string | undefined {
     case 'phone':
       return /^\d{4,13}$/.test(value) ? undefined : 'Enter a valid phone number.';
     case 'phone_prefix':
-      return /^\+?\d{1,5}$/.test(value) ? undefined : 'Choose a valid calling code.';
+      return prefixError(value, values.country);
     default:
       return value.length <= 255 ? undefined : 'Check this field.';
+  }
+}
+
+function prefixError(prefix: string, country: string | undefined): string | undefined {
+  if (!/^\+?\d{1,5}$/.test(prefix)) return 'Choose a valid calling code.';
+  const code = country?.trim().toUpperCase();
+  if (!code) return undefined;
+  try {
+    return getCountryCallingCode(code as CountryCode) === prefix.replace(/^\+/, '')
+      ? undefined
+      : 'Choose the calling code for your country.';
+  } catch {
+    return 'Choose a valid calling code.';
   }
 }
 

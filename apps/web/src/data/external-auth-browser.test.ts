@@ -7,6 +7,7 @@ import {
   isRedirectUrl,
   startExternalAuth,
   validateOnboardingValues,
+  withGooglePhone,
   ExternalAuthRequestError,
 } from './external-auth-browser';
 
@@ -113,5 +114,45 @@ describe('external auth browser', () => {
     });
     expect(isRedirectUrl('https://accounts.google.com/o/oauth2/v2/auth')).toBe(true);
     expect(isRedirectUrl('javascript:alert(1)')).toBe(false);
+  });
+
+  it('asks Google onboarding for a phone without dropping prefilled profile fields', () => {
+    const required = withGooglePhone('google', ['email', 'country', 'date_of_birth', 'currency']);
+    expect(required).toEqual(['email', 'country', 'date_of_birth', 'currency', 'phone_prefix', 'phone']);
+    expect(withGooglePhone('telegram', ['email', 'country'])).toEqual(['email', 'country']);
+    expect(
+      externalFieldOrder(required, { email: 'ada@example.com', first_name: 'Ada', last_name: 'Lovelace' }),
+    ).toEqual([
+      'email',
+      'first_name',
+      'last_name',
+      'date_of_birth',
+      'country',
+      'currency',
+      'phone_prefix',
+      'phone',
+    ]);
+    expect(
+      validateOnboardingValues(required, required, {
+        email: 'ada@example.com',
+        country: 'GB',
+        date_of_birth: '1990-01-02',
+        currency: 'EUR',
+        first_name: 'Ada',
+        phone_prefix: '49',
+        phone: '7700900123',
+      }),
+    ).toMatchObject({ phone_prefix: 'Choose the calling code for your country.' });
+    expect(
+      validateOnboardingValues(required, required, {
+        email: 'ada@example.com',
+        country: 'GB',
+        date_of_birth: '1990-01-02',
+        currency: 'EUR',
+        first_name: 'Ada',
+        phone_prefix: '44',
+        phone: '7700900123',
+      }),
+    ).toEqual({});
   });
 });

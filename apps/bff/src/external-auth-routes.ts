@@ -212,6 +212,7 @@ async function handleFinish(c: Context, dependencies: ExternalAuthRouteDependenc
           prefill: result.onboarding.prefill,
           next: pending.next,
           expiresAt,
+          method: pending.method,
         },
         dependencies.secret,
       );
@@ -222,6 +223,7 @@ async function handleFinish(c: Context, dependencies: ExternalAuthRouteDependenc
           prefill: result.onboarding.prefill,
           expiresAt,
           next: pending.next,
+          method: pending.method,
         },
         200,
         [
@@ -249,6 +251,7 @@ async function handleOnboardingRead(
     prefill: pending.value.prefill,
     expiresAt: pending.value.expiresAt,
     next: pending.value.next,
+    ...(pending.value.method ? { method: pending.value.method } : {}),
   });
 }
 
@@ -271,7 +274,7 @@ async function handleOnboardingComplete(
   try {
     const session = await dependencies.getExternalAuth().completeOnboarding({
       token: pending.value.token,
-      requiredFields: pending.value.requiredFields,
+      requiredFields: googlePhoneFields(pending.value.method, pending.value.requiredFields),
       values: parsed.data.values,
     });
     return sessionJson(session, pending.value.next, dependencies, clearOnboarding(dependencies));
@@ -281,6 +284,15 @@ async function handleOnboardingComplete(
     const fields = error instanceof ExternalAuthError ? error.fields : [];
     return failure(code, terminalOnboarding.has(code) ? clearOnboarding(dependencies) : [], fields);
   }
+}
+
+function googlePhoneFields(method: string | undefined, requiredFields: readonly string[]): string[] {
+  if (method !== 'google') return [...requiredFields];
+  const next = [...requiredFields];
+  for (const field of ['phone_prefix', 'phone']) {
+    if (!next.includes(field)) next.push(field);
+  }
+  return next;
 }
 
 function readOnboarding(

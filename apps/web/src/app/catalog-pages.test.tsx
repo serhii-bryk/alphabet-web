@@ -32,6 +32,7 @@ vi.mock('@/data/catalog', async (importOriginal) => {
 vi.mock('@/i18n/navigation', () => ({
   Link: ({ href, children }: { href: string; children: ReactNode }) =>
     createElement('a', { href }, children),
+  usePathname: () => '/casino',
 }));
 
 vi.mock('@/components/auth/session', async (importOriginal) => {

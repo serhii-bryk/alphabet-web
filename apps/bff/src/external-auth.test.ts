@@ -190,6 +190,7 @@ describe('external auth routes', () => {
       prefill: { first_name: 'Ada', last_name: 'Lovelace' },
       expiresAt: new Date(start + 1_800_000).toISOString(),
       next: '/casino',
+      method: 'telegram',
     });
     expect(finishedText).not.toContain('OB_server_only');
     const onboardingCookie = cookiePair(finished, 'ab_ext_onboarding');
@@ -230,6 +231,120 @@ describe('external auth routes', () => {
     ) as { onboarding_token: string; player: { last_name: string } };
     expect(sent.onboarding_token).toBe('OB_server_only');
     expect(sent.player.last_name).toBe('Byron');
+    expect(sent.player).not.toHaveProperty('phone');
+  });
+
+  it('asks Google onboarding for a phone and sends the prefilled profile with it', async () => {
+    const fetcher = vi.fn<typeof fetch>(async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith('/auth/methods')) return Response.json(methods);
+      if (path.endsWith('/auth/request/google')) {
+        return Response.json({
+          authentication_id: 'AUTH_server_only',
+          type: 'redirect',
+          redirect_url: 'https://accounts.google.com/o/oauth2/v2/auth',
+          expires_in: 300,
+        });
+      }
+      if (path.endsWith('/auth/exchange')) {
+        return Response.json({
+          status: 'onboarding_required',
+          onboarding_token: 'OB_server_only',
+          expires_in: 1800,
+          required_fields: ['email', 'country', 'date_of_birth', 'currency'],
+          prefill: { email: 'ada@example.com', first_name: 'Ada', last_name: 'Lovelace' },
+        });
+      }
+      if (path.endsWith('/auth/onboarding/complete')) return Response.json(authenticated);
+      if (path.endsWith('/profile')) return Response.json(profile);
+      return new Response('unexpected', { status: 500 });
+    });
+    const app = appWith(fetcher);
+    const started = await app.request('/api/auth/external/start', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: JSON.stringify({ method: 'google', next: '/casino' }),
+    });
+    const clientState = (
+      JSON.parse(
+        String(fetcher.mock.calls.find((call) => String(call[0]).includes('/auth/request/'))?.[1]?.body),
+      ) as { client_state: string }
+    ).client_state;
+    const finished = await app.request('/api/auth/external/finish', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        origin: 'http://localhost:3000',
+        cookie: cookiePair(started, 'ab_ext_pending'),
+      },
+      body: JSON.stringify({ ticket: 'LT_ticket_value', clientState }),
+    });
+    expect(await finished.json()).toMatchObject({
+      status: 'onboarding_required',
+      method: 'google',
+      requiredFields: ['email', 'country', 'date_of_birth', 'currency'],
+      prefill: { email: 'ada@example.com', first_name: 'Ada', last_name: 'Lovelace' },
+    });
+    const onboardingCookie = cookiePair(finished, 'ab_ext_onboarding');
+    const missingPhone = await app.request('/api/auth/onboarding', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        origin: 'http://localhost:3000',
+        cookie: onboardingCookie,
+      },
+      body: JSON.stringify({
+        values: {
+          email: 'ada@example.com',
+          country: 'GB',
+          date_of_birth: '1990-01-02',
+          currency: 'EUR',
+          first_name: 'Ada',
+          last_name: 'Lovelace',
+        },
+      }),
+    });
+    expect(missingPhone.status).toBe(422);
+    expect(await missingPhone.json()).toMatchObject({
+      error: { code: 'invalid_onboarding' },
+      fields: ['phone_prefix', 'phone'],
+    });
+    expect(fetcher.mock.calls.some((call) => String(call[0]).includes('/auth/onboarding/complete'))).toBe(false);
+
+    const completed = await app.request('/api/auth/onboarding', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        origin: 'http://localhost:3000',
+        cookie: onboardingCookie,
+      },
+      body: JSON.stringify({
+        values: {
+          email: 'ada@example.com',
+          country: 'GB',
+          date_of_birth: '1990-01-02',
+          currency: 'EUR',
+          first_name: 'Ada',
+          last_name: 'Lovelace',
+          phone_prefix: '44',
+          phone: '7700900123',
+        },
+      }),
+    });
+    expect(completed.status).toBe(200);
+    const sent = JSON.parse(
+      String(
+        fetcher.mock.calls.find((call) => String(call[0]).includes('/auth/onboarding/complete'))?.[1]?.body,
+      ),
+    ) as { player: Record<string, string> };
+    expect(sent.player).toMatchObject({
+      email: 'ada@example.com',
+      first_name: 'Ada',
+      last_name: 'Lovelace',
+      country: 'GB',
+      phone_prefix: '44',
+      phone: '7700900123',
+    });
   });
 
   it('rejects an expired ticket, a bad return URL, an unlisted method, and a foreign origin', async () => {

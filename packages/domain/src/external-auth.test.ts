@@ -168,4 +168,45 @@ describe('external auth use cases', () => {
       },
     });
   });
+
+  it('sends a Google phone with the prefilled profile and rejects a prefix from another country', async () => {
+    const client = platform();
+    const cases = createExternalAuthUseCases(client, { now: () => start });
+    await expect(
+      cases.completeOnboarding({
+        token: 'OB_server',
+        requiredFields: ['email', 'country', 'phone_prefix', 'phone'],
+        values: {
+          email: 'ada@example.com',
+          country: 'GB',
+          first_name: 'Ada',
+          phone_prefix: '49',
+          phone: '7700900123',
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'invalid_onboarding', fields: ['phone_prefix'] });
+    expect(client.completeExternalOnboarding).not.toHaveBeenCalled();
+
+    await cases.completeOnboarding({
+      token: 'OB_server',
+      requiredFields: ['email', 'country', 'phone_prefix', 'phone'],
+      values: {
+        email: 'ada@example.com',
+        country: 'GB',
+        first_name: 'Ada',
+        phone_prefix: '44',
+        phone: '7700900123',
+      },
+    });
+    expect(client.completeExternalOnboarding).toHaveBeenCalledWith({
+      onboardingToken: 'OB_server',
+      player: {
+        email: 'ada@example.com',
+        country: 'GB',
+        first_name: 'Ada',
+        phone_prefix: '44',
+        phone: '7700900123',
+      },
+    });
+  });
 });

@@ -1,4 +1,5 @@
 import { PlatformClientError } from '@brand/platform';
+import { getCountryCallingCode, type CountryCode } from 'libphonenumber-js/min';
 import type {
   PlatformClient,
   PlatformExternalAuthExchange,
@@ -222,6 +223,11 @@ function playerPayload(
     else player[field] = value;
   }
 
+  if (player.country && player.phone_prefix && !callingCodeMatches(player.country, player.phone_prefix)) {
+    if (!invalid.includes('phone_prefix')) invalid.push('phone_prefix');
+    delete player.phone_prefix;
+  }
+
   if (invalid.length > 0) throw new ExternalAuthError('invalid_onboarding', invalid);
   return player;
 }
@@ -259,6 +265,14 @@ function playerFieldIsValid(field: string, value: string, now: () => number): bo
       return value.length <= 255;
     default:
       return value.length <= 255;
+  }
+}
+
+function callingCodeMatches(country: string, prefix: string): boolean {
+  try {
+    return getCountryCallingCode(country as CountryCode) === prefix.replace(/^\+/, '');
+  } catch {
+    return true;
   }
 }
 

@@ -3,7 +3,9 @@ import { LogOut, UserRound } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import type { PlayerBalance } from '@brand/contracts';
 import { Link } from '@/i18n/navigation';
+import { SearchTrigger } from '../search';
 import { Button } from '../ui';
+import { DepositButton } from '../cashier/cashier-provider';
 import { useAuthDialog } from './auth-provider';
 import { useBalance, useLogout, useSession } from './session';
 
@@ -30,7 +32,7 @@ function AuthSkeleton({ className }: { className: string }) {
   );
 }
 
-export function BalanceChip() {
+export function BalanceChip({ compact = false }: { compact?: boolean }) {
   const locale = useLocale();
   const t = useTranslations('shell');
   const balance = useBalance();
@@ -38,17 +40,19 @@ export function BalanceChip() {
     return (
       <span
         aria-label={t('loadingBalance')}
-        className="skeleton block h-10 w-24 rounded-[var(--radius-md)]"
+        className={`skeleton block rounded-[var(--radius-md)] ${compact ? 'h-9 w-16' : 'h-10 w-24'}`}
       />
     );
   }
+  const amount = balance.data ? formatBalance(balance.data, locale) : '—';
   return (
     <span
       data-testid="balance"
-      className="motion-enter inline-flex h-10 items-center rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-bold tabular-nums shadow-[inset_0_1px_0_rgb(255_255_255/.06)]"
+      title={amount}
+      className={`motion-enter inline-flex min-w-0 items-center rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] font-bold tabular-nums shadow-[inset_0_1px_0_rgb(255_255_255/.06)] ${compact ? 'h-9 max-w-[6.75rem] px-2 text-xs' : 'h-10 px-3 text-sm'}`}
     >
       <span className="sr-only">{t('balance')}</span>
-      {balance.data ? formatBalance(balance.data, locale) : '—'}
+      <span className="truncate">{amount}</span>
     </span>
   );
 }
@@ -124,24 +128,41 @@ export function HeaderAuth() {
   );
 }
 
-export function MobileHeaderAuth() {
+export function MobileHeaderCluster() {
   const { status, session } = useSession();
   const { openRegistration } = useAuthDialog();
   const t = useTranslations('shell');
+  const account = useTranslations('nav');
   if (status === 'pending') return <AuthSkeleton className="w-[72px]" />;
   if (!session) {
     return (
-      <button
-        type="button"
-        className={`${registerClass} px-3`}
-        aria-haspopup="dialog"
-        onClick={(event) => openRegistration(event.currentTarget)}
-      >
-        {t('register')}
-      </button>
+      <>
+        <SearchTrigger iconOnly />
+        <button
+          type="button"
+          className={`${registerClass} px-3`}
+          aria-haspopup="dialog"
+          onClick={(event) => openRegistration(event.currentTarget)}
+        >
+          {t('register')}
+        </button>
+      </>
     );
   }
-  return <BalanceChip />;
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      <BalanceChip compact />
+      <DepositButton appearance="header" dense />
+      <SearchTrigger iconOnly compact />
+      <Link
+        href="/account"
+        aria-label={account('account')}
+        className="pressable inline-grid size-9 shrink-0 place-items-center rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:border-[var(--accent-line)] hover:text-[var(--text)]"
+      >
+        <UserRound aria-hidden size={16} />
+      </Link>
+    </div>
+  );
 }
 
 export function DrawerAuth({ onNavigate }: { onNavigate: () => void }) {

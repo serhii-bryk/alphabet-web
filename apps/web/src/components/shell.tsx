@@ -29,7 +29,7 @@ import { GameLaunchProvider } from './game-launch/provider';
 import { SupportChatProvider, SupportMenuButton } from './support/support-chat';
 import { AuthProvider, useAuthDialog } from './auth/auth-provider';
 import { CashierProvider, DepositButton } from './cashier/cashier-provider';
-import { DrawerAuth, HeaderAuth, MobileHeaderAuth } from './auth/header-auth';
+import { DrawerAuth, HeaderAuth, MobileHeaderCluster } from './auth/header-auth';
 import { useEndSession, useSession } from './auth/session';
 import { ProductNav } from './product-nav';
 import { RealityCheckReminder, SessionClockLink } from './player-control/session-clock';
@@ -112,11 +112,11 @@ export function Shell({ children }: { children: ReactNode }) {
       <SessionGameLaunch>
       <SupportChatProvider>
       <div className={`shell ${collapsed ? 'sidebar-collapsed' : ''} ${sports ? 'shell-sports' : ''}`} id="app-shell" data-area={area}>
-        <header className="fixed inset-x-0 top-0 z-[64] flex h-[var(--header-h)] items-center gap-2 border-b border-[var(--line)] bg-[var(--bg)]/95 px-3 backdrop-blur-sm lg:gap-3 lg:px-5">
-          <IconButton label={shellT('openMenu')} className="mobile-only" onClick={() => setDrawer(true)}>
+        <header className="fixed inset-x-0 top-0 z-[64] flex h-[var(--header-h)] min-w-0 items-center gap-1.5 overflow-x-clip border-b border-[var(--line)] bg-[var(--bg)]/95 px-3 backdrop-blur-sm lg:gap-3 lg:px-5">
+          <IconButton label={shellT('openMenu')} className="mobile-only shrink-0" onClick={() => setDrawer(true)}>
             <Menu size={20} />
           </IconButton>
-          <Link href="/casino" className="flex min-w-0 items-center text-lg font-black tracking-tight">
+          <Link href="/casino" className="flex min-w-0 shrink items-center text-lg font-black tracking-tight">
             <Wordmark compact />
           </Link>
           <div className="desktop-only ms-3 shrink-0">
@@ -125,18 +125,15 @@ export function Shell({ children }: { children: ReactNode }) {
           <div className="desktop-only ms-4 flex-1 justify-center">
             <SearchTrigger />
           </div>
-          <div className="ms-auto flex items-center gap-2">
-            <div className="mobile-only">
-              <SearchTrigger iconOnly />
+          <div className="ms-auto flex min-w-0 items-center gap-1.5 lg:gap-2">
+            <div className="mobile-only min-w-0">
+              <MobileHeaderCluster />
             </div>
             <div className="desktop-only">
               <SessionClockLink placement="header" />
             </div>
             <div className="desktop-only min-w-0 gap-2">
               <HeaderAuth />
-            </div>
-            <div className="mobile-only">
-              <MobileHeaderAuth />
             </div>
             <div className="desktop-only">
               <DepositButton appearance="header" />
@@ -180,7 +177,6 @@ export function Shell({ children }: { children: ReactNode }) {
             <LocaleSwitcher showLabel />
             <ThemeSwitcher />
             <SignedInMenuLinks onNavigate={() => setDrawer(false)} />
-            <DepositButton onNavigate={() => setDrawer(false)} />
             <SupportMenuButton onNavigate={() => setDrawer(false)} />
           </div>
         </Drawer>

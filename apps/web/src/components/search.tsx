@@ -632,7 +632,15 @@ export function CommandSearch() {
   );
 }
 
-export function SearchTrigger({ iconOnly = false, className = '' }: { iconOnly?: boolean; className?: string }) {
+export function SearchTrigger({
+  iconOnly = false,
+  compact = false,
+  className = '',
+}: {
+  iconOnly?: boolean;
+  compact?: boolean;
+  className?: string;
+}) {
   const nav = useTranslations('nav');
   const t = useTranslations('search');
   return (
@@ -643,7 +651,7 @@ export function SearchTrigger({ iconOnly = false, className = '' }: { iconOnly?:
       onClick={(event) =>
         dispatchEvent(new CustomEvent('open-command-search', { detail: { opener: event.currentTarget } }))
       }
-      className={`pressable h-10 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface-2)] text-sm text-[var(--muted)] hover:border-[var(--accent-line)] hover:bg-[var(--surface)] hover:text-[var(--text)] ${iconOnly ? 'grid size-10 place-items-center' : 'flex min-w-56 px-3'} ${className}`}
+      className={`pressable h-10 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface-2)] text-sm text-[var(--muted)] hover:border-[var(--accent-line)] hover:bg-[var(--surface)] hover:text-[var(--text)] ${iconOnly ? `grid ${compact ? 'size-9' : 'size-10'} place-items-center` : 'flex min-w-56 px-3'} ${className}`}
     >
       <SearchIcon size={17} />
       {!iconOnly && (

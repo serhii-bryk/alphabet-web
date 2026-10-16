@@ -115,10 +115,12 @@ export function CashierProvider({ children }: { children: ReactNode }) {
 
 export function DepositButton({
   compact = false,
+  dense = false,
   appearance = 'nav',
   onNavigate,
 }: {
   compact?: boolean;
+  dense?: boolean;
   appearance?: 'nav' | 'header';
   onNavigate?: () => void;
 }) {
@@ -133,8 +135,12 @@ export function DepositButton({
   };
   if (appearance === 'header') {
     return (
-      <Button type="button" className="fade-enter" onClick={open}>
-        <WalletCards size={16} />
+      <Button
+        type="button"
+        className={`fade-enter shrink-0 ${dense ? 'h-9 px-2.5 text-xs' : ''}`}
+        onClick={open}
+      >
+        <WalletCards aria-hidden size={dense ? 14 : 16} className={dense ? 'max-[380px]:hidden' : undefined} />
         {t('deposit')}
       </Button>
     );

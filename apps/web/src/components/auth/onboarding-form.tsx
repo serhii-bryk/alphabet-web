@@ -11,6 +11,7 @@ import {
   externalFieldOrder,
   fetchOnboarding,
   validateOnboardingValues,
+  withGooglePhone,
   type OnboardingFormState,
 } from '@/data/external-auth-browser';
 import { fetchRegistrationOptions } from '@/data/registration-browser';
@@ -32,6 +33,7 @@ const fieldErrorKeys = {
   'Enter your city.': 'city',
   'Enter your postal code.': 'postal',
   'Enter a valid phone number.': 'phone',
+  'Choose the calling code for your country.': 'prefixCountry',
   'Choose a valid calling code.': 'prefixValid',
   'Check this field.': 'required',
 } as const;
@@ -89,10 +91,20 @@ export function OnboardingForm() {
     return () => controller.abort();
   }, [t]);
 
-  const fields = useMemo(
-    () => (form ? externalFieldOrder(form.requiredFields, form.prefill) : []),
+  const requiredFields = useMemo(
+    () => (form ? withGooglePhone(form.method, form.requiredFields) : []),
     [form],
   );
+  const fields = useMemo(
+    () => (form ? externalFieldOrder(requiredFields, form.prefill) : []),
+    [form, requiredFields],
+  );
+  const prefixFromCountry =
+    options?.countries.find((item) => item.code === (values.country ?? ''))?.callingCode ?? '';
+  const shownValues = useMemo(() => {
+    if (values.phone_prefix || !prefixFromCountry) return values;
+    return { ...values, phone_prefix: prefixFromCountry };
+  }, [values, prefixFromCountry]);
 
   const update = (field: string, value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
@@ -106,12 +118,12 @@ export function OnboardingForm() {
 
   const submit = () => {
     if (!form || pending) return;
-    const nextErrors = validateOnboardingValues(fields, form.requiredFields, values);
+    const nextErrors = validateOnboardingValues(fields, requiredFields, shownValues);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
     const payload: Record<string, string> = {};
     for (const field of fields) {
-      const value = values[field]?.trim() ?? '';
+      const value = shownValues[field]?.trim() ?? '';
       if (value) payload[field] = value;
     }
     setPending(true);
@@ -159,17 +171,48 @@ export function OnboardingForm() {
             submit();
           }}
         >
-          {fields.map((field) => (
-            <OnboardingField
-              key={field}
-              field={field}
-              required={form.requiredFields.includes(field)}
-              value={values[field] ?? ''}
-              error={fieldError(errors[field])}
-              options={options}
-              onChange={(value) => update(field, value)}
-            />
-          ))}
+          {fields.map((field) => {
+            if (field === 'phone' && fields.includes('phone_prefix')) return null;
+            if (field === 'phone_prefix' && fields.includes('phone')) {
+              return (
+                <div key="phone" className="grid grid-cols-[5.25rem_minmax(0,1fr)] gap-2 sm:grid-cols-[7rem_minmax(0,1fr)]">
+                  <OnboardingField
+                    field="phone_prefix"
+                    required={requiredFields.includes('phone_prefix')}
+                    value={shownValues.phone_prefix ?? ''}
+                    error={fieldError(errors.phone_prefix)}
+                    options={options}
+                    onChange={(value) => update('phone_prefix', value)}
+                  />
+                  <OnboardingField
+                    field="phone"
+                    required={requiredFields.includes('phone')}
+                    value={values.phone ?? ''}
+                    error={fieldError(errors.phone)}
+                    options={options}
+                    onChange={(value) => update('phone', value)}
+                  />
+                </div>
+              );
+            }
+            return (
+              <OnboardingField
+                key={field}
+                field={field}
+                required={requiredFields.includes(field)}
+                value={shownValues[field] ?? ''}
+                error={fieldError(errors[field])}
+                options={options}
+                onChange={(value) => {
+                  update(field, value);
+                  if (field === 'country' && fields.includes('phone_prefix')) {
+                    const code = options?.countries.find((item) => item.code === value)?.callingCode ?? '';
+                    update('phone_prefix', code);
+                  }
+                }}
+              />
+            );
+          })}
           {notice && (
             <p role="alert" className="text-sm font-semibold text-[var(--danger)]">
               {notice}

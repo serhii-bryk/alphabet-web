@@ -19,6 +19,7 @@ const onboardingSchema = z.object({
   prefill: z.record(z.string(), z.string().max(255)),
   next: z.string().min(1).max(200),
   expiresAt: z.iso.datetime(),
+  method: z.string().regex(/^[a-z0-9_-]{1,64}$/).optional(),
 });
 
 export type PendingExternalAuth = z.infer<typeof pendingSchema>;
