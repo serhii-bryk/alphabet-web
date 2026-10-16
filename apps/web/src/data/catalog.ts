@@ -53,8 +53,14 @@ export function toCatalogQuery(filters: CatalogGameFilters): string {
   return query.toString();
 }
 
+function onNetlify(env: Record<string, string | undefined>): boolean {
+  // NETLIFY and DEPLOY_PRIME_URL exist while the site builds. The Next.js
+  // server function only receives URL, SITE_ID, and SITE_NAME.
+  return env.NETLIFY === 'true' || Boolean(env.SITE_ID?.trim()) || Boolean(env.SITE_NAME?.trim());
+}
+
 export function resolveBffBaseUrl(env: Record<string, string | undefined> = process.env): string {
-  if (env.NETLIFY === 'true') {
+  if (onNetlify(env)) {
     const site = siteOrigin(env.DEPLOY_PRIME_URL) ?? siteOrigin(env.URL);
     if (site) return `${site}/api`;
   }
