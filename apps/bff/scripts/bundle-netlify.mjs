@@ -8,7 +8,7 @@ const result = await esbuild.build({
   bundle: true,
   platform: 'node',
   format: 'esm',
-  target: 'node20',
+  target: 'node22',
   outfile: 'dist/netlify/bff.mjs',
   metafile: true,
   logLevel: 'info',

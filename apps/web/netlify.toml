@@ -8,7 +8,7 @@ command = "pnpm build"
 publish = "apps/web/.next"
 
 [build.environment]
-NODE_VERSION = "20"
+NODE_VERSION = "22"
 PNPM_FLAGS = "--shamefully-hoist"
 # Demo guards. The function clears the same switches again at runtime.
 AI_CHAT_ENABLED = "false"
