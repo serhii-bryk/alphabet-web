@@ -84,9 +84,13 @@ describe('payment config guards', () => {
     expect(isTestDepositEnabled(undefined, 'test')).toBe(false);
   });
 
-  it('enables mock payments only outside production', () => {
+  it('enables mock payments outside production, and in production only when that deploy allows it', () => {
     expect(isMockPaymentsEnabled('true', 'development')).toBe(true);
     expect(isMockPaymentsEnabled('true', 'production')).toBe(false);
+    expect(isMockPaymentsEnabled('true', 'production', false)).toBe(false);
+    expect(isMockPaymentsEnabled('true', 'production', true)).toBe(true);
+    expect(isMockPaymentsEnabled('false', 'production', true)).toBe(false);
+    expect(isMockPaymentsEnabled(undefined, 'production', true)).toBe(false);
     expect(isMockPaymentsEnabled('false', 'development')).toBe(false);
   });
 });

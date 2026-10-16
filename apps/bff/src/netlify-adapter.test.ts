@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readPaymentsConfig } from './payments-config.js';
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -33,7 +34,9 @@ describe('Netlify BFF function', () => {
       OPENAI_API_KEY: 'sk-demo',
       AI_CHAT_ENABLED: 'true',
       PAYMENTS_TEST_MODE: 'true',
-      PAYMENTS_MOCK_MODE: 'true',
+      PAYMENTS_MOCK_MODE: 'false',
+      PAYMENTS_MOCK_ALLOW_PRODUCTION: 'false',
+      NODE_ENV: 'production',
       DEPLOY_PRIME_URL: 'https://alphabet.netlify.app/',
     });
 
@@ -46,8 +49,18 @@ describe('Netlify BFF function', () => {
     expect(env.OPENAI_API_KEY).toBeUndefined();
     expect(env.AI_CHAT_ENABLED).toBe('false');
     expect(env.PAYMENTS_TEST_MODE).toBe('false');
-    expect(env.PAYMENTS_MOCK_MODE).toBe('false');
+    expect(env.PAYMENTS_MOCK_MODE).toBe('true');
+    expect(env.PAYMENTS_MOCK_ALLOW_PRODUCTION).toBe('true');
+    expect(env.NODE_ENV).toBe('production');
     expect(env.WEB_ORIGIN).toBe('https://alphabet.netlify.app');
+
+    const payments = readPaymentsConfig(env);
+    expect(payments.mockMode).toBe(true);
+    expect(payments.testMode).toBe(false);
+    expect(payments.providerConfigured).toBe(false);
+    expect(payments.finalpayUrl).toBeUndefined();
+    expect(payments.finalpaySecret).toBeUndefined();
+    expect(payments.callbackBaseUrl).toBeUndefined();
   });
 
   it('serves browser /api routes and does not call OpenAI', async () => {
