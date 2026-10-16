@@ -171,9 +171,6 @@ async function requestCatalog<T>(path: string, filters: CatalogGameFilters): Pro
     }
     try {
       const body = (await response.json()) as T;
-      if (lobby) {
-        logCatalogLobby(env, { url, status: response.status, durationMs });
-      }
       return body;
     } catch (error) {
       if (lobby) {
