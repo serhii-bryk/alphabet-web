@@ -28,8 +28,8 @@ interface FaqEntry {
 const faqs: Record<SupportFaqId, FaqEntry> = {
   registration: {
     aliases: ['registration and login', 'التسجيل وتسجيل الدخول'],
-    en: 'Register from the header, the homepage form, or the Register page. Signup is two steps with email, password, and your profile. Google, Apple, and Phone are shown and are not available. Telegram sign-in appears only when it is configured. Login is the header Login button. If registration finishes but sign-in does not, use Login with the same email.',
-    ar: 'التسجيل من الرأس أو نموذج الصفحة الرئيسية أو صفحة التسجيل. التسجيل خطوتان: البريد وكلمة المرور وبياناتك. غوغل وآبل والهاتف ظاهرة وغير متاحة. تسجيل تيليغرام يظهر فقط عند ضبطه. الدخول من زر الدخول في الرأس. إذا اكتمل التسجيل ولم يتم الدخول، استخدم الدخول بنفس البريد.',
+    en: 'Register from the header, the homepage form, or the Register page. Signup is two steps with email, password, and your profile. External sign-in shows only the methods the platform currently offers. Apple and phone sign-in are not offered. A new external account may ask for the missing profile fields before the session starts. Login is the header Login button. If registration finishes but sign-in does not, use Login with the same email.',
+    ar: 'التسجيل من الرأس أو نموذج الصفحة الرئيسية أو صفحة التسجيل. التسجيل خطوتان: البريد وكلمة المرور وبياناتك. تسجيل الدخول الخارجي يعرض فقط الطرق التي توفرها المنصة الآن. آبل والهاتف غير متاحين. قد يطلب حساب خارجي جديد الحقول الناقصة قبل بدء الجلسة. الدخول من زر الدخول في الرأس. إذا اكتمل التسجيل ولم يتم الدخول، استخدم الدخول بنفس البريد.',
     actions: [{ type: 'open_registration' }, { type: 'open_login' }],
     related: ['verification'],
   },
@@ -268,8 +268,8 @@ function commandReply(
       ]);
     case 'register':
       return say(
-        'Opening registration. You complete it yourself. Google, Apple, and Phone are not available.',
-        'جارٍ فتح التسجيل. تكمله بنفسك. غوغل وآبل والهاتف غير متاحة.',
+        'Opening registration. You complete it yourself. External sign-in shows only methods the platform currently offers.',
+        'جارٍ فتح التسجيل. تكمله بنفسك. تسجيل الدخول الخارجي يعرض فقط الطرق التي توفرها المنصة الآن.',
         [{ type: 'open_registration' }],
       );
     case 'live':
@@ -893,8 +893,8 @@ function explainTopic(topic: FollowTopic, locale: 'en' | 'ar'): SupportChatRespo
       ar: 'العروض ثلاث بطاقات معاينة: الترحيب، ونهاية الأسبوع، ومواد المجلة. ليست مكافأة شخصية، ولا يوجد رمز ترويجي لإدخاله.',
     },
     registration: {
-      en: 'Registration is two steps with your email and profile. Google, Apple, and Phone are shown and are not available. I can open the form, and you submit it.',
-      ar: 'التسجيل خطوتان بالبريد وبياناتك. غوغل وآبل والهاتف ظاهرة وغير متاحة. أستطيع فتح النموذج، وأنت ترسله.',
+      en: 'Registration is two steps with your email and profile. External sign-in shows only methods the platform currently offers. I can open the form, and you submit it.',
+      ar: 'التسجيل خطوتان بالبريد وبياناتك. تسجيل الدخول الخارجي يعرض فقط الطرق التي توفرها المنصة الآن. أستطيع فتح النموذج، وأنت ترسله.',
     },
     favorites: {
       en: 'Favorites are saved for a signed-in player. A guest is asked to sign in before a heart can save a game.',

@@ -7,12 +7,14 @@ const options = [{ id:'light' as const, themeKey:'lightTheme' as const, icon:Sun
 
 export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
   const t = useTranslations('theme');
-  const [theme,setTheme] = useState<Theme>('system');
-  const mode = useRef<Theme>('system');
+  const [theme,setTheme] = useState<Theme>('dark');
+  const mode = useRef<Theme>('dark');
   useEffect(() => {
     // Hydrate the control from the preference already applied by the inline theme script.
+    const stored = localStorage.getItem('theme');
+    const saved: Theme = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'dark';
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    const saved = (localStorage.getItem('theme') as Theme | null) ?? 'system'; setTheme(saved);
+    setTheme(saved);
     mode.current = saved;
     const media = matchMedia('(prefers-color-scheme: dark)');
     const apply = (mode: Theme) => { document.documentElement.setAttribute('data-theme', mode === 'dark' || (mode === 'system' && media.matches) ? 'dark' : 'light'); document.documentElement.setAttribute('data-theme-mode', mode); };

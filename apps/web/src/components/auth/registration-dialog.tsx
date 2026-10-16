@@ -36,7 +36,7 @@ import { Button, IconButton } from '../ui';
 import { AuthDialog } from './auth-dialog';
 import { readRememberedIdentity, rememberIdentity } from './remembered-identity';
 import { applyAuthenticatedSession } from './session';
-import { TelegramContinue } from './telegram-continue';
+import { ExternalAuthButtons } from './external-auth-buttons';
 
 const inputClass =
   'h-11 w-full rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--bg)] px-3 text-base text-[var(--text)] outline-none transition focus-visible:border-[var(--accent)] aria-[invalid=true]:border-[var(--danger)]';
@@ -212,12 +212,7 @@ export function RegistrationDialog({
   const flow = (
     <>
       {step === 1 && (
-        <TelegramContinue
-          onAuthenticated={() => {
-            onClose();
-            if (pathname !== '/casino') router.push('/casino');
-          }}
-        />
+        <ExternalAuthButtons />
       )}
       <div className="mb-5 flex items-center gap-2" aria-label={t('stepOf', { step, total: 2 })}>
         {[1, 2].map((item) => (

@@ -61,13 +61,13 @@ describe('Netlify BFF function', () => {
     vi.stubEnv('FINALPAY_URL', 'https://payments.example');
     vi.stubEnv('FINALPAY_SECRET', 'pay-secret');
     vi.stubEnv('PAYMENTS_CALLBACK_BASE_URL', 'https://payments.example');
-    const fetcher = vi.fn(async () => Response.json({}));
+    const fetcher = vi.fn<typeof fetch>(async () => Response.json({}));
     vi.stubGlobal('fetch', fetcher);
     const { default: handler } = await loadFunction();
 
     const providers = await handler(new Request('https://alphabet.example/api/auth/providers'));
     expect(providers.status).toBe(200);
-    expect(await providers.json()).toEqual({ telegram: null });
+    expect(await providers.json()).toEqual({ methods: [] });
 
     const session = await handler(new Request('https://alphabet.example/api/session'));
     expect(session.status).toBe(200);
@@ -89,7 +89,8 @@ describe('Netlify BFF function', () => {
     const chatBodyJson = (await chat.json()) as { error: { code: string } };
     expect(chatBodyJson.error.code).toBe('ai_unavailable');
     expect(JSON.stringify(chatBodyJson)).not.toContain('sk-demo');
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://stage.example/api/v1/auth/methods');
   });
 });
 

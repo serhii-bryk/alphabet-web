@@ -93,7 +93,7 @@ const articles: KnowledgeArticle[] = [
       'دخول',
       'رصيد',
     ],
-    body: 'Register is the header Register button, the homepage form for guests, or the Register page. Signup is two steps. Google, Apple, and Phone are visible and not available. Email verification is not required to play. If registration finishes but sign-in does not, the account can still exist: use Login with the same email. Login is the header Login button. Logout is in the header when signed in. Logout closes real-money games and leaves demo games. Balance is shown in the header for a signed-in player and on the Account page. Asking for “my balance” shows that player’s own amount from the account. Guests are asked to sign in. Do not invent an amount or show another player’s balance. The Account page also shows profile details the player already has: name, email, currency, country, and whether email is verified. On a phone, Account is in the bottom bar. On a wide screen, the email button in the header opens Account. Support must not ask for a password.',
+    body: 'Register is the header Register button, the homepage form for guests, or the Register page. Signup is two steps. External sign-in shows only the methods the platform currently offers. Apple and phone sign-in are not offered. A new external account may ask for missing profile fields before the session starts. Email verification is not required to play. If registration finishes but sign-in does not, the account can still exist: use Login with the same email. Login is the header Login button. Logout is in the header when signed in. Logout closes real-money games and leaves demo games. Balance is shown in the header for a signed-in player and on the Account page. Asking for “my balance” shows that player’s own amount from the account. Guests are asked to sign in. Do not invent an amount or show another player’s balance. The Account page also shows profile details the player already has: name, email, currency, country, and whether email is verified. On a phone, Account is in the bottom bar. On a wide screen, the email button in the header opens Account. Support must not ask for a password.',
   },
   {
     id: 'payments',
@@ -133,7 +133,7 @@ const articles: KnowledgeArticle[] = [
       'داكن',
       'فاتح',
     ],
-    body: 'Language and theme are in the side menu: the desktop sidebar, and the menu behind the header button on a phone. Languages are English and Arabic. Arabic uses a right-to-left layout. Switching language keeps the current page. Theme choices are Light, Dark, and System.',
+    body: 'Language and theme are in the side menu: the desktop sidebar, and the menu behind the header button on a phone. Languages are English and Arabic. Arabic uses a right-to-left layout. Switching language keeps the current page. Theme choices are Light, Dark, and System. A new visit starts in Dark until that browser saves another choice.',
   },
   {
     id: 'pwa',

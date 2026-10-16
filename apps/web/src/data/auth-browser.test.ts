@@ -4,11 +4,9 @@ import {
   AuthRequestError,
   fetchBalance,
   fetchProfile,
-  fetchAuthProviders,
   fetchSession,
   isValidLoginInput,
   login,
-  loginWithTelegram,
   logout,
 } from './auth-browser';
 
@@ -140,45 +138,6 @@ describe('login', () => {
     const error = await caught(login({ email: 'player@example.com', password }));
     expect((error as AuthRequestError).code).toBe('auth_unavailable');
     expect(String((error as Error).message)).not.toContain(password);
-  });
-});
-
-describe('telegram login', () => {
-  const widgetUser = {
-    id: 900000001,
-    first_name: 'Telegram',
-    auth_date: 1_700_000_000,
-    hash: 'ab'.repeat(32),
-  };
-
-  it('accepts a session with no email and posts only the widget fields', async () => {
-    const telegramSession = { ...session, email: null };
-    const fetcher = stubFetch(async () => Response.json({ ...telegramSession, accessToken: 'secret' }));
-    await expect(loginWithTelegram(widgetUser)).resolves.toEqual(telegramSession);
-    const [url, init] = fetcher.mock.calls[0]!;
-    expect(url).toBe('/api/auth/telegram');
-    expect(JSON.parse(String(init?.body))).toEqual(widgetUser);
-    expect(String(init?.body)).not.toContain('accessToken');
-  });
-
-  it('reads a configured bot id and hides anything else', async () => {
-    stubFetch(async () => Response.json({ telegram: { botId: '123456789', token: 'secret' } }));
-    await expect(fetchAuthProviders()).resolves.toEqual({ telegram: { botId: '123456789' } });
-    stubFetch(async () => Response.json({ telegram: null }));
-    await expect(fetchAuthProviders()).resolves.toEqual({ telegram: null });
-    stubFetch(async () => Response.json({ telegram: { botId: 'nope' } }));
-    await expect(fetchAuthProviders()).resolves.toEqual({ telegram: null });
-  });
-
-  it.each([
-    'external_auth_rejected',
-    'external_auth_unavailable',
-    'account_restricted',
-  ] as const)('maps %s from the response code', async (code) => {
-    stubFetch(async () => Response.json({ error: { code, message: 'safe' } }, { status: 401 }));
-    const error = await caught(loginWithTelegram(widgetUser));
-    expect((error as AuthRequestError).code).toBe(code);
-    expect(String((error as Error).message)).not.toContain(widgetUser.hash);
   });
 });
 

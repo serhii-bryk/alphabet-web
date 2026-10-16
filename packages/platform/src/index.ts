@@ -292,6 +292,37 @@ export const platformLoginResponseSchema = z.object({
   expires_in: z.number().int().positive(),
 });
 
+const externalMethodCodeSchema = z.string().regex(/^[a-z0-9_-]{1,64}$/);
+const externalAuthMethodSchema = z.object({
+  code: externalMethodCodeSchema,
+  name: z.string().trim().min(1).max(80),
+  type: z.literal('redirect'),
+});
+const externalAuthMethodsSchema = z.object({
+  methods: z.array(z.unknown()),
+});
+const externalAuthStartSchema = z.object({
+  authentication_id: z.string().min(1).max(128),
+  type: z.literal('redirect'),
+  redirect_url: z.string().min(1).max(4096),
+  expires_in: z.number().int().positive(),
+});
+const externalOnboardingFieldSchema = z.string().regex(/^[a-z][a-z0-9_]{0,63}$/);
+const externalAuthOnboardingSchema = z.object({
+  status: z.literal('onboarding_required'),
+  onboarding_token: z.string().min(1).max(128),
+  expires_in: z.number().int().positive(),
+  required_fields: z.array(externalOnboardingFieldSchema),
+  prefill: z.record(z.string(), z.string()),
+});
+const externalAuthAuthenticatedSchema = platformLoginResponseSchema.extend({
+  status: z.literal('authenticated'),
+});
+const externalAuthExchangeSchema = z.discriminatedUnion('status', [
+  externalAuthAuthenticatedSchema,
+  externalAuthOnboardingSchema,
+]);
+
 export const platformProfileResponseSchema = z.object({
   profile: platformAuthProfileSchema,
 });
@@ -407,6 +438,47 @@ export interface PlatformTelegramLoginInput {
   domain?: string;
 }
 
+export interface PlatformExternalAuthMethod {
+  code: string;
+  name: string;
+  type: 'redirect';
+}
+
+export interface PlatformExternalAuthStartInput {
+  method: string;
+  returnUrl: string;
+  clientState: string;
+  ipNumber?: string;
+  browser?: string;
+  domain?: string;
+}
+
+export interface PlatformExternalAuthStart {
+  authentication_id: string;
+  redirect_url: string;
+  expires_in: number;
+}
+
+export interface PlatformExternalAuthExchangeInput {
+  ticket: string;
+  authenticationId: string;
+}
+
+export type PlatformExternalAuthExchange =
+  | { status: 'authenticated'; session: PlatformLoginResponse }
+  | {
+      status: 'onboarding_required';
+      onboarding_token: string;
+      expires_in: number;
+      required_fields: string[];
+      prefill: Record<string, string>;
+    };
+
+export interface PlatformExternalOnboardingInput {
+  onboardingToken: string;
+  player: Record<string, string>;
+}
+
 export interface PlatformRegistrationInput {
   email: string;
   first_name: string;
@@ -440,6 +512,10 @@ export interface PlatformClient {
   launchDemoGame(gameId: string): Promise<PlatformGameLaunch>;
   login(input: PlatformLoginInput): Promise<PlatformLoginResponse>;
   authenticateTelegram(input: PlatformTelegramLoginInput): Promise<PlatformLoginResponse>;
+  listExternalAuthMethods(): Promise<PlatformExternalAuthMethod[]>;
+  startExternalAuth(input: PlatformExternalAuthStartInput): Promise<PlatformExternalAuthStart>;
+  exchangeExternalAuth(input: PlatformExternalAuthExchangeInput): Promise<PlatformExternalAuthExchange>;
+  completeExternalOnboarding(input: PlatformExternalOnboardingInput): Promise<PlatformLoginResponse>;
   refresh(playerId: number, accessToken: string): Promise<PlatformRefreshResponse>;
   logout(playerId: number, accessToken: string): Promise<PlatformLogoutResponse>;
   getProfile(playerId: number, accessToken: string): Promise<PlatformProfileResponse>;
@@ -492,17 +568,25 @@ export class PlatformClientError extends Error {
   readonly status: number | undefined;
   /** Stable Platform `code` when the error JSON included one. Never the upstream message. */
   readonly platformCode: string | undefined;
+  /** Onboarding field names from a validation failure. Never messages or submitted values. */
+  readonly fields: readonly string[] | undefined;
+  readonly field: string | undefined;
+  readonly reason: string | undefined;
 
   constructor(
     code: 'request_failed' | 'invalid_response',
     status?: number,
     platformCode?: string,
+    details?: { fields?: readonly string[]; field?: string; reason?: string },
   ) {
     super(code === 'request_failed' ? 'Platform request failed' : 'Platform response was invalid');
     this.name = 'PlatformClientError';
     this.code = code;
     this.status = status;
     this.platformCode = platformCode;
+    this.fields = details?.fields;
+    this.field = details?.field;
+    this.reason = details?.reason;
   }
 }
 
@@ -602,16 +686,20 @@ export function createPlatformClient(options: CreatePlatformClientOptions): Plat
     }
 
     if (!response.ok) {
-      const platformCode = await readPlatformCode(response);
+      const failure = await readPlatformFailure(response);
       if (registrationAttempt) {
         logRegistrationDiagnostic({
           status: response.status,
-          code: platformCode ?? null,
-          classification: classifyRegistrationFailure(response.status, platformCode),
+          code: failure.code ?? null,
+          classification: classifyRegistrationFailure(response.status, failure.code),
           contentType: safeContentType(response),
         });
       }
-      throw new PlatformClientError('request_failed', response.status, platformCode);
+      throw new PlatformClientError('request_failed', response.status, failure.code, {
+        fields: failure.fields,
+        field: failure.field,
+        reason: failure.reason,
+      });
     }
 
     let responseBody: unknown;
@@ -742,6 +830,79 @@ export function createPlatformClient(options: CreatePlatformClientOptions): Plat
         '/player/login/telegram',
         platformLoginResponseSchema,
         { json },
+      );
+      return loginSession(result);
+    },
+    async listExternalAuthMethods() {
+      const body = await request('GET', '/auth/methods', externalAuthMethodsSchema);
+      const methods: PlatformExternalAuthMethod[] = [];
+      for (const item of body.methods) {
+        const parsed = externalAuthMethodSchema.safeParse(item);
+        if (parsed.success) methods.push(parsed.data);
+      }
+      return methods;
+    },
+    async startExternalAuth(input) {
+      if (!externalMethodCodeSchema.safeParse(input.method).success) {
+        throw new PlatformClientError('request_failed');
+      }
+      if (!isPartnerReturnUrl(input.returnUrl) || !isClientState(input.clientState)) {
+        throw new PlatformClientError('request_failed');
+      }
+      const json: Record<string, string> = {
+        return_url: input.returnUrl,
+        client_state: input.clientState,
+      };
+      if (input.ipNumber) json.ip_number = input.ipNumber;
+      if (input.browser) json.browser = input.browser;
+      if (input.domain) json.domain = input.domain;
+      const started = await request(
+        'POST',
+        `/auth/request/${input.method}`,
+        externalAuthStartSchema,
+        { json },
+      );
+      if (!isProviderRedirectUrl(started.redirect_url)) {
+        throw new PlatformClientError('invalid_response');
+      }
+      return {
+        authentication_id: started.authentication_id,
+        redirect_url: started.redirect_url,
+        expires_in: started.expires_in,
+      };
+    },
+    async exchangeExternalAuth(input) {
+      if (!isCompletionTicket(input.ticket) || !isAuthenticationId(input.authenticationId)) {
+        throw new PlatformClientError('request_failed');
+      }
+      const result = await request('POST', '/auth/exchange', externalAuthExchangeSchema, {
+        json: { ticket: input.ticket, authentication_id: input.authenticationId },
+      });
+      if (result.status === 'onboarding_required') {
+        return {
+          status: 'onboarding_required' as const,
+          onboarding_token: result.onboarding_token,
+          expires_in: result.expires_in,
+          required_fields: result.required_fields,
+          prefill: result.prefill,
+        };
+      }
+      return { status: 'authenticated' as const, session: loginSession(result) };
+    },
+    async completeExternalOnboarding(input) {
+      if (!isOnboardingToken(input.onboardingToken)) {
+        throw new PlatformClientError('request_failed');
+      }
+      const player: Record<string, string> = {};
+      for (const [key, value] of Object.entries(input.player)) {
+        if (!externalOnboardingFieldSchema.safeParse(key).success || value.trim() === '') continue;
+        player[key] = value;
+      }
+      const result = await request(
+        'POST',
+        '/auth/onboarding/complete',
+        externalAuthAuthenticatedSchema,
+        { json: { onboarding_token: input.onboardingToken, player } },
       );
       return loginSession(result);
     },
@@ -1014,12 +1175,113 @@ export function createPlatformClient(options: CreatePlatformClientOptions): Plat
   }
 }
 
-async function readPlatformCode(response: Response): Promise<string | undefined> {
+const onboardingFieldNames = new Set([
+  'email',
+  'country',
+  'date_of_birth',
+  'currency',
+  'first_name',
+  'last_name',
+  'address',
+  'city',
+  'postal_code',
+  'phone_prefix',
+  'phone',
+  'username',
+  'btag',
+]);
+const onboardingReasons = new Set(['underage', 'country_not_allowed', 'currency_not_allowed']);
+
+interface PlatformFailureDetails {
+  code?: string;
+  fields?: string[];
+  field?: string;
+  reason?: string;
+}
+
+function isPartnerReturnUrl(value: string): boolean {
+  let url: URL;
   try {
-    return extractPlatformCode(await response.json());
+    url = new URL(value);
   } catch {
-    return undefined;
+    return false;
   }
+  if (url.username || url.password || url.hash) return false;
+  if (url.searchParams.has('ticket') || url.searchParams.has('error') || url.searchParams.has('client_state')) {
+    return false;
+  }
+  if (url.protocol === 'https:') return true;
+  return url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
+}
+
+function isClientState(value: string): boolean {
+  return /^[\x21-\x7E]{16,512}$/.test(value);
+}
+
+function isAuthenticationId(value: string): boolean {
+  return /^[\x21-\x7E]{1,128}$/.test(value);
+}
+
+function isCompletionTicket(value: string): boolean {
+  return /^[\x21-\x7E]{8,128}$/.test(value);
+}
+
+function isOnboardingToken(value: string): boolean {
+  return /^[\x21-\x7E]{1,128}$/.test(value);
+}
+
+function isProviderRedirectUrl(value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  if (url.username || url.password) return false;
+  if (url.protocol === 'https:') return true;
+  return url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
+}
+
+async function readPlatformFailure(response: Response): Promise<PlatformFailureDetails> {
+  try {
+    return extractPlatformFailure(await response.json());
+  } catch {
+    return {};
+  }
+}
+
+function extractPlatformFailure(body: unknown): PlatformFailureDetails {
+  const code = extractPlatformCode(body);
+  if (typeof body !== 'object' || body === null) return { code };
+  const record = body as Record<string, unknown>;
+  const details: PlatformFailureDetails = { code };
+  if (code === 'registration_validation_failed') {
+    const fields = readValidationFields(record.fields);
+    if (fields.length > 0) details.fields = fields;
+  }
+  if (code === 'registration_not_allowed') {
+    const field = readOnboardingFieldName(record.field);
+    if (field) details.field = field;
+    if (typeof record.reason === 'string' && onboardingReasons.has(record.reason)) {
+      details.reason = record.reason;
+    }
+  }
+  return details;
+}
+
+function readValidationFields(value: unknown): string[] {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return [];
+  const names: string[] = [];
+  for (const key of Object.keys(value)) {
+    const bare = key.includes('.') ? key.slice(key.lastIndexOf('.') + 1) : key;
+    const field = readOnboardingFieldName(bare);
+    if (field && !names.includes(field)) names.push(field);
+  }
+  return names;
+}
+
+function readOnboardingFieldName(value: unknown): string | undefined {
+  return typeof value === 'string' && onboardingFieldNames.has(value) ? value : undefined;
 }
 
 function extractPlatformCode(body: unknown): string | undefined {

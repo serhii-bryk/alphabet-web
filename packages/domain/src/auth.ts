@@ -88,7 +88,7 @@ export function createAuthUseCases(
       } catch (error) {
         throw mapLoginFailure(error);
       }
-      return establishSession(platform, authenticated, now);
+      return establishPlayerSession(platform, authenticated, now);
     },
 
     async loginWithTelegram(command) {
@@ -99,7 +99,7 @@ export function createAuthUseCases(
         throw mapTelegramFailure(error);
       }
       try {
-        return await establishSession(platform, authenticated, now);
+        return await establishPlayerSession(platform, authenticated, now);
       } catch (error) {
         if (error instanceof AuthError) throw error;
         throw new AuthError('external_auth_unavailable');
@@ -159,7 +159,7 @@ export function createAuthUseCases(
   };
 }
 
-async function establishSession(
+export async function establishPlayerSession(
   platform: PlatformClient,
   authenticated: PlatformLoginResponse,
   now: () => number,

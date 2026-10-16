@@ -282,6 +282,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   box-shadow: var(--shadow-2), inset 0 1px 0 rgb(255 255 255 / .14);
 }
 .sports-hero { height: 8.25rem; }
+.sports-hero.sports-hero-registration { height: auto; min-height: 32rem; }
 .lobby-title {
   display: flex;
   align-items: center;
@@ -303,6 +304,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 }
 @media (min-width: 640px) {
   .sports-hero { height: 11.5rem; }
+  .sports-hero.sports-hero-registration { height: auto; min-height: 25rem; }
   .sportsbook { height: calc(100dvh - var(--header-h) - var(--bottom-h) - var(--open-games-h) - 16.25rem); }
 }
 .lobby-hero,

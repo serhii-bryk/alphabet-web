@@ -109,7 +109,7 @@ export interface GameLaunchUseCases {
 
 export { AccountError, createAccountUseCases } from './account.js';
 export type { AccountUseCases } from './account.js';
-export { AuthError, createAuthUseCases, toAuthSession } from './auth.js';
+export { AuthError, createAuthUseCases, establishPlayerSession, toAuthSession } from './auth.js';
 export type {
   AuthUseCases,
   LoginCommand,
@@ -117,6 +117,14 @@ export type {
   RefreshIfNeededResult,
   TelegramLoginCommand,
 } from './auth.js';
+export { createExternalAuthUseCases, ExternalAuthError } from './external-auth.js';
+export type {
+  ExternalAuthErrorCode,
+  ExternalAuthMethod,
+  ExternalAuthResult,
+  ExternalAuthUseCases,
+  ExternalOnboarding,
+} from './external-auth.js';
 export { createRegistrationUseCases, RegistrationError } from './registration.js';
 export {
   createMemoryPaymentIntentStore,

@@ -21,6 +21,8 @@ vi.mock('@/i18n/navigation', () => ({
     ...props
   }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children: ReactNode }) =>
     createElement('a', { href, ...props }, children),
+  usePathname: () => '/casino',
+  useRouter: () => ({ push: () => undefined, replace: () => undefined }),
 }));
 
 vi.mock('@/components/auth/session', async (importOriginal) => {
@@ -82,11 +84,12 @@ function renderLobby() {
 }
 
 describe('lobby hero', () => {
-  it('exposes register and email sign-up for guests', () => {
+  it('uses the hero form as the single guest registration entry', () => {
     session.status = 'guest';
     const html = renderLobby();
 
-    expect(html).toContain('>Register<');
+    expect(html).not.toContain('>Register<');
+    expect(html).toContain('data-hero-registration');
     expect(html).toContain('type="email"');
     expect(html).toContain('type="password"');
     expect(html).toContain('>Continue<');
