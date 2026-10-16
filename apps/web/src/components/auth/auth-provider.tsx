@@ -126,10 +126,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error={error}
         onSubmit={submit}
         onClose={close}
-        onTelegramAuthenticated={() => {
-          openerRef.current = null;
-          setOpen(false);
-        }}
         onCreateAccount={() => {
           reset();
           setOpen(false);

@@ -5,6 +5,7 @@ import {
   createAccountUseCases,
   createAuthUseCases,
   createCatalogUseCases,
+  createExternalAuthUseCases,
   createGameLaunchUseCases,
   createPaymentUseCases,
   createPersonalizationUseCases,
@@ -24,10 +25,10 @@ import { isResponsibleGamingPath, registerResponsibleGamingRoutes } from './resp
 import {
   applyResolvedSession,
   isAuthPath,
-  readTelegramBotId,
   registerAuthRoutes,
   resolvePlayerSession,
 } from './auth-routes.js';
+import { isExternalAuthPath, registerExternalAuthRoutes } from './external-auth-routes.js';
 import { createFinalpayClient } from './finalpay.js';
 import { createFilePaymentIntentStore } from './payment-intents.js';
 import { isPaymentCallbackPath, isPaymentPath, registerPaymentRoutes } from './payment-routes.js';
@@ -231,7 +232,6 @@ export function createApp(options: CreateAppOptions = {}) {
     secret: readSessionSecret(env),
     webOrigin,
     now,
-    telegramBotId: readTelegramBotId(env),
     inflight,
   };
   const app = new Hono();
@@ -376,6 +376,15 @@ export function createApp(options: CreateAppOptions = {}) {
 
   registerSportsRoutes(app, { ...sessionDependencies, getSports: () => sportsLaunch, inflight });
   registerAuthRoutes(app, sessionDependencies);
+  let externalAuth: ReturnType<typeof createExternalAuthUseCases> | undefined;
+  const getExternalAuth = () =>
+    (externalAuth ??= createExternalAuthUseCases(getPlatform(), { now }));
+  registerExternalAuthRoutes(app, {
+    getExternalAuth,
+    secret: sessionDependencies.secret,
+    webOrigin,
+    now,
+  });
   registerAccountRoutes(app, { ...sessionDependencies, getAccount, inflight });
   let personalization: PersonalizationUseCases | undefined;
   const getPersonalization = () =>
@@ -550,7 +559,7 @@ export function createApp(options: CreateAppOptions = {}) {
         },
       );
     }
-    if (isAuthPath(c.req.path)) {
+    if (isAuthPath(c.req.path) || isExternalAuthPath(c.req.path)) {
       return new Response(
         JSON.stringify({
           error: { code: 'auth_unavailable', message: 'Sign-in is unavailable' },

@@ -181,7 +181,14 @@ export type AuthErrorCode =
   | 'session_ended'
   | 'external_auth_rejected'
   | 'external_auth_unavailable'
-  | 'account_restricted';
+  | 'external_auth_cancelled'
+  | 'external_auth_expired'
+  | 'external_auth_mismatch'
+  | 'invalid_return_url'
+  | 'onboarding_expired'
+  | 'onboarding_unavailable'
+  | 'invalid_onboarding'
+  | 'email_already_registered';
 
 export interface AuthErrorResponse {
   error: { code: AuthErrorCode; message: string };

@@ -4,7 +4,7 @@ Source of truth for the current product. Read this before reconstructing history
 
 Update this file at the end of every completed milestone, and whenever an important architecture or integration decision changes. Record names and decisions only. Never store secrets, passwords, API keys, tokens, HMAC material, or personal test-account credentials.
 
-Last updated: 2026-10-15 (Netlify demo deploy).
+Last updated: 2026-10-16 (hero acquisition cleanup).
 
 ## Product goal
 
@@ -45,14 +45,14 @@ Fast Development Mode 2.0. One primary agent implements the task. `.cursor/agent
 - Casino and Live Casino lobbies backed by the Platform game catalog, with search, categories, and a provider filter. Studios that share a `groupedCode` are shown once and filter with `group` (`grouped_provider`). A short Popular rail appears only when a page has more than eight games; the rest of the page is a grid.
 - Global search (⌘K / Ctrl+K and `/search`) covers catalog games, providers, categories, the three promotion previews, and existing pages and in-page sections. Games launch through the current player. Promotions open `/promotions/welcome`, `/promotions/weekend-live`, and `/promotions/journal-drops`, using the same preview copy as the promotions list. Same-page section results scroll in place after search closes, and closing search restores focus without moving the page. On Casino, the Spin the house card scrolls to `#games`. Game search is debounced, at least two characters, limited to eight games, and the BFF caches identical public searches for 15 seconds and rate-limits them. Providers and categories are loaded once and filtered locally.
 - The user-facing name is AlphaBet. Locales are English (`en`) and Arabic (`ar`), with `dir="rtl"` for Arabic and a header language switch that keeps the current path. Homepage, product, promo, and journal banners use original images in `apps/web/public/banners/`.
-- Homepage hero is local product content, not a CMS. For guests it is the main signup entry: Register and a quick email, password, and country form open the existing registration dialog and can prefill those three fields in memory. Google, Apple, and Phone stay visible and disabled. Signed-in players see Play and Explore sports instead, with no signup controls. Casino and Sports are the two main choices under the hero; Live Casino stays a secondary casino link. Join, Register, and Create account stay hidden for a signed-in player and while the session is still resolving. Guests still get them from the header, hero, footer, and promotions. Signed-in players get Account in that footer slot and Deposit on promotions. `/register` remains a direct guest visit. It is not the header or hero path.
+- Homepage hero is local product content, not a CMS. Casino, Live Casino, and Sports show one structured acquisition form for guests: available external methods first, then email, password, country, and Continue. It opens the existing registration dialog with those email fields prefilled. The redundant Register button was removed from each hero; global header and footer registration entry points remain. External sign-in buttons are only the redirect methods Stage returns, and Telegram has its provider icon. Signed-in players do not see the form or a hero registration CTA; Casino and Live Casino show Play and Explore sports instead, while Sports keeps its member banner. A new visit uses the dark theme until this browser has saved light, dark, or system. The header switcher still offers all three, and the saved choice is applied before paint. Casino and Sports are the two main choices under the casino hero; Live Casino stays a secondary casino link. Join, Register, and Create account stay hidden for a signed-in player and while the session is still resolving. Guests still get them from the global header, footer, and promotions. Signed-in players get Account in that footer slot and Deposit on promotions. `/register` remains a direct guest visit. It is not the header or hero path.
 - Product switch for Casino, Live Casino, and Sports is in the header on desktop and a sticky bar on mobile. The same header, sidebar, mobile navigation, and footer wrap every normal route, including Sports. The sportsbook iframe keeps its own height and the footer follows it. Short info pages (journal, support, responsible gaming, terms, privacy) ship with the shell. Promotions are an honest placeholder on `/promotions`, linked from the desktop sidebar and the mobile navigation. Casino and Live Casino lobbies do not carry a promotions rail. Non-clickable lobby and page heroes shift the image slightly with the pointer on a fine pointer, and drift with CSS on touch. Clickable cards keep their hover. `prefers-reduced-motion` leaves those heroes still.
 - Demo game launch, and real-money launch for a signed-in player. A game card click launches immediately. Guests launch demo when the catalog allows it; otherwise the existing login dialog opens. Signed-in players launch real money. The same game in the same mode is focused instead of launched again. A different mode replaces that panel with a new launch. Logout closes real panels and leaves demo panels. Login does not relabel a demo iframe as real.
 - Game workspace: up to 5 open games, each with its own launch state. A normal launch is an in-flow page inside the shell, with the site header, the game player, the footer, and the open-games bar. The bar stays on every normal route while games are open, including Sports and Promotions. Leaving the page parks the game without unmounting its iframe; choosing its tab returns to that same session. Pop-out is an in-app floating window (drag, resize, minimize, maximize, restore), not a separate browser window, and it does not take the site header or footer. Parked iframes stay mounted, full size, and in the viewport at opacity 0 so they keep running. There is no dedicated game route.
 - Guest demo play is timed in the browser (`alphabet.demoPlay.v1`). Defaults are 10 minutes for the soft prompt and 20 minutes for the stronger prompt. `NEXT_PUBLIC_DEMO_PROMPT_SOFT_MS` / `NEXT_PUBLIC_DEMO_PROMPT_STRONG_MS`, and non-production `demoSoftMs` / `demoStrongMs` query params, override them. Register and Sign in open the existing dialogs. Dismiss leaves the game running. An authenticated session stops the prompts.
 - In-game Deposit opens the existing cashier above the workspace. The game iframe stays mounted. A successful deposit refreshes the existing account balance query. Test Deposit stays available when `PAYMENTS_TEST_MODE=true`.
 - Game information under the focused or expanded game uses catalog fields the browser already receives: name, image, provider, categories, format, game type, RTP, volatility, demo availability, real-money availability, and listed time. Empty values are omitted. RTP and volatility are shown as Platform sent them. Provider game ids are not shown.
-- Login, logout, and an httpOnly session cookie. The Platform JWT stays on the server. Email and password stay the standard account path. Telegram Login Widget sign-in is added when `TELEGRAM_BOT_ID` is set: the browser sends the widget payload to the BFF, Platform verifies it and creates or reuses the player, and the BFF seals the same `brand_session`. A Telegram player may have no email. Google, phone/SMS, Facebook, and Apple are not shown as working sign-in methods.
+- Login, logout, and an httpOnly session cookie. The Platform JWT stays on the server. Email and password stay the standard account path. External sign-in goes through the BFF: `GET /auth/methods`, `POST /auth/external/start`, the provider redirect back to `/auth/callback`, then `POST /auth/external/finish`. The BFF calls Stage `POST /auth/request/{method}` and `POST /auth/exchange`. An authenticated exchange seals the same `brand_session`. `onboarding_required` stores the onboarding token in the httpOnly `ab_ext_onboarding` cookie and opens `/auth/onboarding`. The form uses the returned `required_fields` and editable `prefill`, then `POST /auth/onboarding/complete`. The browser never receives the authentication id, onboarding token, or JWT. Stage puts the single-use ticket and `client_state` on the return URL; the callback page strips that query and posts it once to the BFF. The pending attempt is the httpOnly `ab_ext_pending` cookie, checked against `client_state` before exchange. The product no longer calls `POST /player/login/telegram` or loads the Telegram Login Widget. `TELEGRAM_BOT_ID` does not decide which buttons appear.
 - Account profile and balance for the authenticated player.
 - Payments core: cashier deposit and withdrawal through the BFF. The browser never calls the payment provider or Platform directly. A confirmed deposit credits the wallet only from the BFF after a trusted captured callback. Test deposit is a separate guarded path. Development mock Card and Bank transfer methods are a third path: they stay pending and do not move money. Transaction history is not built.
 - Registration UI and BFF: two-step signup. A successful Platform register is followed by the existing login flow, which seals the httpOnly session. Email verification is not required. One stage call with `SESSION_SECRET` set created an account, logged in, and returned an authenticated session while `emailVerified` was false. That call is not part of CI.
@@ -77,7 +77,11 @@ All paths are under the configured `/api/v1` base.
 - `GET /countries`, `GET /currencies`
 - `POST /player/register`
 - `POST /player/login`
-- `POST /player/login/telegram` with `{ flow: "login_widget", payload }` — verified Telegram Login Widget only. Platform creates the player and wallets on the first accepted login, then returns the same auth session as password login (`profile`, `access_token`, `token_type`, `expires_in`). A later login with the same Telegram user id reuses that player. The payload hash is verified by Platform with the bot token. AlphaBet rejects a payload older than 24 hours, or more than 60 seconds in the future, before that call.
+- `GET /auth/methods` — `{ methods: [{ code, name, type }] }`. AlphaBet shows `type: "redirect"` only.
+- `POST /auth/request/{loginMethod}` — `{ return_url, client_state }`. `return_url` is exactly `{WEB_ORIGIN}/auth/callback` with no query. `client_state` is a new random 64-character hex value, stored only in the pending cookie.
+- `POST /auth/exchange` — `{ ticket, authentication_id }`. Outcomes seen in the Stage contract: `authenticated` (same session shape as password login, plus `status`) or `onboarding_required` (`onboarding_token`, `expires_in`, `required_fields`, `prefill`).
+- `POST /auth/onboarding/complete` — `{ onboarding_token, player }`. A success has the authenticated session shape.
+- `POST /player/login/telegram` is no longer called by the website or BFF. The platform client method remains in the package and is unused by this flow.
 - `POST /player/:id/refresh`, `POST /player/:id/logout`
 - `GET /player/:id/profile`, `GET /player/:id/balance`
 - `GET /games`, `GET /games/providers`, `GET /games/categories`
@@ -143,7 +147,7 @@ BFF:
 - `SUPPORT_TELEGRAM_URL` — optional `https` Telegram link
 - `SUPPORT_WHATSAPP_URL` — optional `https` WhatsApp link
 - `SUPPORT_HELPDESK_URL` — optional `https` helpdesk link
-- `TELEGRAM_BOT_ID` — optional public numeric bot id, digits only. This is not the bot token. When it is missing or invalid, Telegram sign-in is hidden. Platform must have the `telegram` login method enabled, the `login_widget` flow on, and the bot token configured. The bot domain in BotFather must match `WEB_ORIGIN`.
+- `TELEGRAM_BOT_ID` — unused by external sign-in. Buttons come from `GET /auth/methods`, not from this value.
 
 Web:
 
@@ -156,17 +160,17 @@ Web:
 
 - Sportsbook is not integrated. Promotions are not a real offer system.
 - Registration’s public errors stay coarse on purpose. Upstream detail is only in the server log described below.
-- Phone/SMS registration is not available. `POST /player/register` still requires email, password, and the full profile. Platform has no SMS OTP generate, send, or verify API.
-- Google sign-in is not available. `config/login_methods.php` registers only the Telegram driver. There is no Google OAuth/OIDC driver or partner endpoint.
-- Facebook sign-in is not available. There is no Facebook driver, route, or credential contract.
-- Telegram does not supply a verified email or phone. Platform stores a null email and null password and does not collect date of birth or country on this path. AlphaBet does not invent those fields and does not merge the Telegram player with an email account. Cool-off, self-exclusion, blocked, and inactive still reject login. A cashier call for a player with no email sends an empty email because that is what Platform stored.
+- Phone/SMS registration is not available. `POST /player/register` still requires email, password, and the full profile. Platform has no SMS OTP generate, send, or verify API. Stage `GET /auth/methods` on 2026-10-16 did not return a phone method.
+- Facebook and Apple sign-in are not offered. Stage did not return them on 2026-10-16.
+- Live Google and Telegram sign-in are blocked until the partner registers the return URL. On 2026-10-16, Stage `GET /auth/methods` returned `google` and `telegram`, both `type: "redirect"`. `POST /auth/request/telegram` and `POST /auth/request/google` with `return_url` `http://localhost:3000/auth/callback` both returned `422` `invalid_return_url`. The casino showed only those two buttons. Starting Telegram stayed on the page and showed the unregistered-return message. No provider redirect, ticket exchange, existing-player session, or live onboarding completion was observed. Do not treat a fixture-BFF Playwright run as a live Stage login.
+- A player created through external onboarding still depends on the fields Stage marks required. The form does not assume a fixed set. Cool-off, self-exclusion, blocked, and inactive still reject login.
 - Live OpenAI calls are refused when `NODE_ENV` is `production`, even if `AI_CHAT_ENABLED=true` and a key is set. The budget file lock is safe for several processes on one machine and is not a shared limit across hosts. A multi-instance deployment needs a real shared store before the model can be turned on. FAQ, rules, and Site Assistant commands keep working with the model off.
 - Responsible gaming has no partner endpoint to read the current exclusion or to end one early. After a successful exclusion the session is cleared; the on-page receipt does not survive a later login and is not enforcement. Live Stage writes (reality-check save, cool-off, self-exclusion) have not been executed. Profile, balance, and payments do not have their own restricted-account mapper; they rely on Platform session revocation.
 
 ## Current test setup
 
 - Vitest for domain, platform, BFF, and browser-contract tests. Platform `fetch` is faked.
-- Playwright in `apps/web/e2e` for registration, auth, Telegram sign-in, and demo launch, against a fixture BFF. Telegram tests mock the widget script and never call Telegram or Platform.
+- Playwright in `apps/web/e2e` for registration, auth, external sign-in, theme, and demo launch, against a fixture BFF. `e2e/telegram-auth.spec.ts` mocks the BFF methods, start, finish, and onboarding routes. It does not call Stage, Google, or Telegram. `e2e/theme.spec.ts` checks the dark default and a saved light preference.
 - Feature checks name files: `pnpm --filter <pkg> test -- src/<file>.test.ts`, then typecheck and lint for the packages that changed. `pnpm --filter @brand/web exec playwright test e2e/<spec>.spec.ts` for one browser flow.
 - `pnpm test`, `pnpm typecheck`, and `pnpm lint` from the repo root go through Turbo. `test` depends on `^test`, so `pnpm test` is the full suite, not the feature command. `pnpm --filter @brand/web test:e2e` runs every Playwright spec.
 - One manual stage registration with `SESSION_SECRET` set created an account and an authenticated session without email verification. That call is not part of CI.
@@ -189,7 +193,7 @@ Web:
 
 ## Next recommended milestone
 
-Responsible gaming is in place. Telegram sign-in is implemented against `POST /player/login/telegram` and still needs a stage bot id, Platform login-method row, and BotFather domain before a live widget login can succeed. Phone/SMS and Google are blocked on missing Platform contracts. Deposit and Withdraw UI can be exercised with Test Deposit and the development mock cashier. A real FinalPay checkout is blocked until AlphaBet has an isolated provider tenant. Transaction history and sportsbook remain deferred.
+External sign-in is wired through the BFF, and dark is the default theme. Live Google and Telegram login stay blocked until the partner registers each exact return URL, starting with `http://localhost:3000/auth/callback` for local `WEB_ORIGIN`. After that, verify an existing player exchange and a new-player `onboarding_required` completion against Stage. Phone/SMS, Apple, and Facebook are not in the current methods list. Deposit and Withdraw UI can be exercised with Test Deposit and the development mock cashier. A real FinalPay checkout is blocked until AlphaBet has an isolated provider tenant. Transaction history and sportsbook remain deferred.
 
 ## Payments
 
@@ -209,8 +213,8 @@ Before production, AlphaBet needs its own FinalPay tenant, player prefix, transa
 
 - Transaction history.
 - Sportsbook provider integration.
-- Google, Apple, Facebook, and phone/SMS sign-in. They need Platform drivers that are not in this repo.
-- Telegram Mini App (`flow: "mini_app"`). The website uses the login widget only.
+- Apple, Facebook, and phone/SMS sign-in. Stage did not return them on 2026-10-16.
+- Telegram Mini App. The website uses the redirect `/auth` flow, not a Mini App payload.
 - CMS-managed promotions or casino catalog.
 - EveryMatrix and any legacy brand switch.
 - A full production deployment. The Netlify demo is prepared; live payments and OpenAI stay off there.

@@ -2,8 +2,14 @@ import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NextIntlClientProvider } from 'next-intl';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import messages from '../../../messages/en.json';
+
+vi.mock('@/i18n/navigation', () => ({
+  usePathname: () => '/casino',
+  useRouter: () => ({ push: () => undefined, replace: () => undefined }),
+}));
+
 import { LoginDialog, LoginForm } from './login-dialog';
 
 const noop = () => {};
@@ -29,7 +35,6 @@ describe('LoginDialog', () => {
           onSubmit={noop}
           onClose={noop}
           onCreateAccount={noop}
-          onTelegramAuthenticated={noop}
         />,
       ),
     ).toBe('');
@@ -44,7 +49,6 @@ describe('LoginDialog', () => {
         onSubmit={noop}
         onClose={noop}
         onCreateAccount={noop}
-        onTelegramAuthenticated={noop}
       />,
     );
 
