@@ -1,9 +1,11 @@
 # One Netlify site for this repo. Paths are relative to the repository root.
 # In the Netlify UI, leave the base directory empty and set the package directory to apps/web.
-# Leave the publish directory empty so the Next.js runtime can set it.
+# Clear any UI publish directory so this file's publish path is used.
 
 [build]
 command = "pnpm build"
+# Repo-root path. This is the Next.js build the runtime must publish.
+publish = "apps/web/.next"
 
 [build.environment]
 NODE_VERSION = "20"
@@ -13,6 +15,10 @@ AI_CHAT_ENABLED = "false"
 PAYMENTS_TEST_MODE = "false"
 PAYMENTS_MOCK_MODE = "false"
 
+# Explicit runtime. Automatic detection published this site without an SSR handler.
+[[plugins]]
+package = "@netlify/plugin-nextjs"
+
 [functions]
-directory = "apps/bff/netlify"
-node_bundler = "esbuild"
+# Produced by @brand/bff build. One prebundled file, no workspace TypeScript imports.
+directory = "apps/bff/dist/netlify"

@@ -5,7 +5,7 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"],
-      "env": ["NETLIFY", "BFF_INTERNAL_URL", "DEPLOY_PRIME_URL", "DEPLOY_URL", "URL"]
+      "env": ["NETLIFY", "NEXT_PRIVATE_STANDALONE", "BFF_INTERNAL_URL", "DEPLOY_PRIME_URL", "DEPLOY_URL", "URL"]
     },
     "typecheck": { "dependsOn": ["^typecheck"] },
     "lint": { "dependsOn": ["^lint"] },
